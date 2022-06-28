@@ -1,6 +1,6 @@
 include "./tx_leaf.circom";
 include "./leaf_existence.circom";
-include "../../circomlib/circuits/eddsamimc.circom";
+include "../../../node_modules/circomlib/circuits/eddsamimc.circom";
 
 template TxExistence(k){
 // k is depth of tx tree
@@ -45,8 +45,8 @@ template TxExistence(k){
     verifier.enabled <== 1;
     verifier.Ax <== fromX;
     verifier.Ay <== fromY;
-    verifier.R8x <== R8x
-    verifier.R8y <== R8y
+    verifier.R8x <== R8x;
+    verifier.R8y <== R8y;
     verifier.S <== S;
     verifier.M <== txLeaf.out;
 

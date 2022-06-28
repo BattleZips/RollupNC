@@ -1,6 +1,6 @@
-include "../../circomlib/circuits/comparators.circom"
-include "../../circomlib/circuits/switcher.circom"
-include "../../circomlib/circuits/gates.circom"
+include "../../../node_modules/circomlib/circuits/comparators.circom";
+include "../../../node_modules/circomlib/circuits/switcher.circom";
+include "../../../node_modules/circomlib/circuits/gates.circom";
 
 // Maps ints to (0, 1). Maps 0 to 0 and all other ints to 1.
 template ToBool() {
@@ -19,14 +19,13 @@ template AllHigh(k) {
     signal output out;
 
     component makeBool[k];
-    for (var i = 0; i < k; i++) {
+    component mand = MultiAND(k);
+    var i = 0;
+    while (i < k) {
     	makeBool[i] = ToBool();
     	makeBool[i].x <== in[i];
-    }
-
-    component mand = MultiAND(k)
-    for (var i = 0; i < k; i++) {
-    	mand.in[i] <== makeBool[i].out;
+        mand.in[i] <== makeBool[i].out;
+        i++;
     }
     out <== mand.out;
 }

@@ -1,13 +1,13 @@
-include "../circomlib/circuits/eddsamimc.circom";
-include "../circomlib/circuits/mimc.circom";
+include "../../node_modules/circomlib/circuits/eddsamimc.circom";
+include "../../node_modules/circomlib/circuits/mimc.circom";
 
 template Main(){
 
     signal input Ax;
     signal input Ay;
-    signal private input R8x;
-    signal private input R8y;
-    signal private input S;
+    signal input R8x;
+    signal input R8y;
+    signal input S;
     signal input M;
 
     component verifier = EdDSAMiMCVerifier();   
@@ -21,4 +21,4 @@ template Main(){
 
 }
 
-component main = Main();
+component main { public [Ax, Ay, M] } = Main();

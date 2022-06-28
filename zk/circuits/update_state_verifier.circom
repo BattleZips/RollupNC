@@ -1,6 +1,6 @@
-include "../circomlib/circuits/mimc.circom";
-include "../circomlib/circuits/eddsamimc.circom";
-include "../circomlib/circuits/bitify.circom";
+include "../../node_modules/circomlib/circuits/mimc.circom";
+include "../../node_modules/circomlib/circuits/eddsamimc.circom";
+include "../../node_modules/circomlib/circuits/bitify.circom";
 include "./helpers/tx_existence_check.circom";
 include "./helpers/balance_existence_check.circom";
 include "./helpers/balance_leaf.circom";
@@ -17,50 +17,50 @@ template Main(n,m) {
     signal input txRoot;
 
     // Merkle proof for transaction in tx tree
-    signal private input paths2txRoot[2**m, m];
+    signal input paths2txRoot[2**m][m];
 
     // binary vector indicating whether node in tx proof is left or right
-    signal private input paths2txRootPos[2**m, m];
+    signal input paths2txRootPos[2**m][m];
 
     // Merkle root of old balance tree
     signal input currentState;
 
     // intermediate roots (two for each tx), final element is last.
-    signal private input intermediateRoots[2**(m+1)+1];
+    signal input intermediateRoots[2**(m+1)+1];
 
     // Merkle proof for sender account in balance tree
-    signal private input paths2rootFrom[2**m, n];
+    signal input paths2rootFrom[2**m][n];
 
     // binary vector indicating whether node in balance proof for sender account
     // is left or right 
-    signal private input paths2rootFromPos[2**m, n];
+    signal input paths2rootFromPos[2**m][n];
 
     // Merkle proof for receiver account in balance tree
-    signal private input paths2rootTo[2**m, n];
+    signal input paths2rootTo[2**m][n];
 
     // binary vector indicating whether node in balance proof for receiver account
     // is left or right 
-    signal private input paths2rootToPos[2**m, n];
+    signal input paths2rootToPos[2**m][n];
     
     // tx info, 10 fields
-    signal private input fromX[2**m]; //sender address x coordinate
-    signal private input fromY[2**m]; //sender address y coordinate
-    signal private input fromIndex[2**m]; //sender account leaf index
-    signal private input toX[2**m]; // receiver address x coordinate
-    signal private input toY[2**m]; // receiver address y coordinate
-    signal private input nonceFrom[2**m]; // sender account nonce
-    signal private input amount[2**m]; // amount being transferred
-    signal private input tokenTypeFrom[2**m]; // sender token type
-    signal private input R8x[2**m]; // sender signature
-    signal private input R8y[2**m]; // sender signature
-    signal private input S[2**m]; // sender signature
+    signal input fromX[2**m]; //sender address x coordinate
+    signal input fromY[2**m]; //sender address y coordinate
+    signal input fromIndex[2**m]; //sender account leaf index
+    signal input toX[2**m]; // receiver address x coordinate
+    signal input toY[2**m]; // receiver address y coordinate
+    signal input nonceFrom[2**m]; // sender account nonce
+    signal input amount[2**m]; // amount being transferred
+    signal input tokenTypeFrom[2**m]; // sender token type
+    signal input R8x[2**m]; // sender signature
+    signal input R8y[2**m]; // sender signature
+    signal input S[2**m]; // sender signature
 
     // additional account info (not included in tx)
-    signal private input balanceFrom[2**m]; // sender token balance
+    signal input balanceFrom[2**m]; // sender token balance
 
-    signal private input balanceTo[2**m]; // receiver token balance
-    signal private input nonceTo[2**m]; // receiver account nonce
-    signal private input tokenTypeTo[2**m]; // receiver token type
+    signal input balanceTo[2**m]; // receiver token balance
+    signal input nonceTo[2**m]; // receiver account nonce
+    signal input tokenTypeTo[2**m]; // receiver token type
 
     // // new balance tree Merkle root
     signal output out;
@@ -102,8 +102,8 @@ template Main(n,m) {
         txExistence[i].txRoot <== txRoot;
 
         for (var j = 0; j < m; j++){
-            txExistence[i].paths2rootPos[j] <== paths2txRootPos[i, j] ;
-            txExistence[i].paths2root[j] <== paths2txRoot[i, j];
+            txExistence[i].paths2rootPos[j] <== paths2txRootPos[i][j];
+            txExistence[i].paths2root[j] <== paths2txRoot[i][j];
         }
 
         txExistence[i].R8x <== R8x[i];
@@ -120,15 +120,16 @@ template Main(n,m) {
 
         senderExistence[i].balanceRoot <== intermediateRoots[2*i];
         for (var j = 0; j < n; j++){
-            senderExistence[i].paths2rootPos[j] <== paths2rootFromPos[i, j];
-            senderExistence[i].paths2root[j] <== paths2rootFrom[i, j];
+            senderExistence[i].paths2rootPos[j] <== paths2rootFromPos[i][j];
+            senderExistence[i].paths2root[j] <== paths2rootFrom[i][j];
         }
     
         // balance checks
-        balanceFrom[i] - amount[i] <= balanceFrom[i];
-        balanceTo[i] + amount[i] >= balanceTo[i];
 
-        nonceFrom[i] != NONCE_MAX_VALUE;
+        // balanceFrom[i] - amount[i] <= balanceFrom[i];
+        // balanceTo[i] + amount[i] >= balanceTo[i];
+
+        // nonceFrom[i] != NONCE_MAX_VALUE;
 
         //-----CHECK TOKEN TYPES === IF NON-WITHDRAWS-----//
         ifBothHighForceEqual[i] = IfBothHighForceEqual();
@@ -150,8 +151,8 @@ template Main(n,m) {
         computedRootFromNewSender[i] = GetMerkleRoot(n);
         computedRootFromNewSender[i].leaf <== newSender[i].out;
         for (var j = 0; j < n; j++){
-            computedRootFromNewSender[i].paths2root[j] <== paths2rootFrom[i, j];
-            computedRootFromNewSender[i].paths2rootPos[j] <== paths2rootFromPos[i, j];
+            computedRootFromNewSender[i].paths2root[j] <== paths2rootFrom[i][j];
+            computedRootFromNewSender[i].paths2rootPos[j] <== paths2rootFromPos[i][j];
         }
 
         // check that intermediate root is consistent with input
@@ -170,8 +171,8 @@ template Main(n,m) {
 
         receiverExistence[i].balanceRoot <== intermediateRoots[2*i + 1];
         for (var j = 0; j < n; j++){
-            receiverExistence[i].paths2rootPos[j] <== paths2rootToPos[i, j] ;
-            receiverExistence[i].paths2root[j] <== paths2rootTo[i, j];
+            receiverExistence[i].paths2rootPos[j] <== paths2rootToPos[i][j] ;
+            receiverExistence[i].paths2root[j] <== paths2rootTo[i][j];
         }
 
         //-----CHECK RECEIVER IN TREE 3 AFTER INCREMENTING-----//
@@ -199,8 +200,8 @@ template Main(n,m) {
         computedRootFromNewReceiver[i] = GetMerkleRoot(n);
         computedRootFromNewReceiver[i].leaf <== newReceiver[i].out;
         for (var j = 0; j < n; j++){
-            computedRootFromNewReceiver[i].paths2root[j] <== paths2rootTo[i, j];
-            computedRootFromNewReceiver[i].paths2rootPos[j] <== paths2rootToPos[i, j];
+            computedRootFromNewReceiver[i].paths2root[j] <== paths2rootTo[i][j];
+            computedRootFromNewReceiver[i].paths2rootPos[j] <== paths2rootToPos[i][j];
         }
 
         // check that intermediate root is consistent with input
@@ -212,4 +213,4 @@ template Main(n,m) {
 
 }
 
-component main = Main(4,2);
+component main { public [txRoot, currentState] } = Main(4,2);

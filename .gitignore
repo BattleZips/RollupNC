@@ -1,11 +1,10 @@
-node_modules/
-.secret
-proving_key.json
-verification_key.json
-circuit.json
-update_circuit.json
-update_proving_key.json
-update_verification_key.json
-withdraw_circuit.json
-withdraw_proving_key.json
-withdraw_verification_key.json
+# build
+node_modules
+.env
+build
+
+# zk
+zk/ptau
+zk/zkey
+zk/update_state_verifier*
+zk/withdraw_signature_verifier*
