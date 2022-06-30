@@ -1,10 +1,6 @@
 #!/bin/sh
 set -e
 
-# --------------------------------------------------------------------------------
-# Phase 2
-# ... circuit-specific stuff
-
 # if zk/zkey does not exist, make folder
 [ -d zk/zkey ] || mkdir zk/zkey
 
@@ -71,16 +67,13 @@ yarn snarkjs zkey export verificationkey \
     zk/zkey/update_state_verifier_final.zkey zk/update_state_verifier_vkey.json
 yarn snarkjs zkey export verificationkey \
     zk/zkey/withdraw_signature_verifier_final.zkey zk/withdraw_signature_verifier_vkey.json
-# # Export board verifier with updated name and solidity version
-# yarn snarkjs zkey export solidityverifier zk/zkey/board_final.zkey contracts/BoardVerifier.sol
-# # sed -i'.bak' 's/0.6.11;/0.8.11;/g' contracts/BoardVerifier.sol
-# sed -i'.bak' 's/contract Verifier/contract BoardVerifier/g' contracts/BoardVerifier.sol
 
-# # Export shot verifier with updated name and solidity version
+# # Export verifier with naming
 yarn snarkjs zkey export solidityverifier \
-    zk/zkey/update_state_verifier_final.zkey contracts/UpdateStateVerifier.sol
+    zk/zkey/update_state_verifier_final.zkey contracts/verifiers/UpdateStateVerifier.sol
 yarn snarkjs zkey export solidityverifier \
-    zk/zkey/withdraw_signature_verifier_final.zkey contracts/WithdrawSignaturerVerifier.sol
-# # sed -i'.bak' 's/0.6.11;/0.8.11;/g' contracts/ShotVerifier.sol
-# sed -i'.bak' 's/contract Verifier/contract ShotVerifier/g' contracts/ShotVerifier.sol
-# rm contracts/*.bak
+    zk/zkey/withdraw_signature_verifier_final.zkey contracts/verifiers/WithdrawSignatureVerifier.sol
+sed -i'.bak' 's/contract Verifier/contract UpdateStateVerifier/g' contracts/verifiers/UpdateStateVerifier.sol
+sed -i'.bak' 's/contract Verifier/contract WithdrawSignatureVerifier/g' contracts/verifiers/WithdrawSignatureVerifier.sol
+
+rm contracts/*.bak

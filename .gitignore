@@ -2,6 +2,9 @@
 node_modules
 .env
 build
+deployments
+artifacts
+cache
 
 # zk
 zk/ptau

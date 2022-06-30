@@ -1,53 +1,44 @@
-pragma solidity >=0.4.21;
+//SPDX-License-Identifier: GNU GPLv3
+pragma solidity ^0.8.15;
 
-contract TokenRegistry {
+import "./interfaces/ITokenRegistry.sol";
 
-    address public coordinator;
-    address public rollupNC;
-
-    mapping(address => bool) public pendingTokens;
-    mapping(uint256 => address) public registeredTokens;
-        // 1 -> ETH
-        // 2 -> 0xaD6D458402F60fD3Bd25163575031ACDce07538D (Dai on Ropsten)
-        // 3 -> 0xc778417e063141139fce010982780140aa0cd5ab (WETH on Ropsten)
-    uint256 public numTokens;
-
-    modifier fromRollupNC(){
-        assert(msg.sender == rollupNC);
-        _;
-    }
-
-    modifier onlyCoordinator(){
-        assert(msg.sender == coordinator);
-        _;
-    }
-
-    constructor(
-        address _coordinator
-    ) public {
+/**
+ * @title Registry of ERC20 tokens that the Rollup can process
+ * @notice documented in ITokenRegistry
+ */
+contract TokenRegistry is ITokenRegistry {
+    /**
+     * Instantiate the RollupNC's ERC20 Token Registry
+     * @param _coordinator - the address of the permissioned off-chain roll-up sequencer
+     */
+    constructor(address _coordinator) {
         coordinator = _coordinator;
-        numTokens = 1; //ETH
+        registryIndex = 1; // ETH
     }
 
-    function setRollupNC(
-        address _rollupNC
-    ) public onlyCoordinator {
-        rollupNC = _rollupNC;
+    function setRollup(address _rollup) public override onlyCoordinator {
+        rollup = _rollup;
+        emit RollupSet(_rollup);
     }
 
-    function registerToken(
-        address tokenContract
-    ) public {
-        require(pendingTokens[tokenContract] == false, "Token already registered.");
-        pendingTokens[tokenContract] = true;
+    function registerToken(address _token) public override {
+        require(
+            state[_token] == TokenRegistration.None,
+            "Token already pending/ registered!"
+        );
+        state[_token] = TokenRegistration.Pending;
+        emit TokenPending(_token);
     }
 
-    function approveToken(
-        address tokenContract
-    ) public fromRollupNC {
-        require(pendingTokens[tokenContract], 'Token was not registered');
-        numTokens++;
-        registeredTokens[numTokens] = tokenContract; // tokenType => token contract address
+    function approveToken(address _token) public override onlyRollup {
+        require(
+            state[_token] == TokenRegistration.Pending,
+            "Token is not pending registration!"
+        );
+        registryIndex += 1;
+        registry[registryIndex] = _token;
+        state[_token] = TokenRegistration.Registered;
+        emit TokenRegistered(registryIndex);
     }
-
 }
