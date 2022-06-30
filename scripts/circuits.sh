@@ -14,15 +14,15 @@ circom zk/circuits/withdraw_signature_verifier.circom -o zk/ --r1cs --wasm
 
 #Setup
 yarn snarkjs groth16 setup zk/update_state_verifier.r1cs \
-    zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/update_state_verifier_final.zkey
+    zk/ptau/pot20_final.ptau zk/zkey/update_state_verifier_final.zkey
 yarn snarkjs groth16 setup zk/withdraw_signature_verifier.r1cs \
-    zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/withdraw_signature_verifier_final.zkey
+    zk/ptau/pot20_final.ptau zk/zkey/withdraw_signature_verifier_final.zkey
 
 # # Generate reference zkey
 yarn snarkjs zkey new zk/update_state_verifier.r1cs \
-    zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/update_state_verifier_0000.zkey
+    zk/ptau/pot20_final.ptau zk/zkey/update_state_verifier_0000.zkey
 yarn snarkjs zkey new zk/withdraw_signature_verifier.r1cs \
-    zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/withdraw_signature_verifier_0000.zkey
+    zk/ptau/pot20_final.ptau zk/zkey/withdraw_signature_verifier_0000.zkey
 
 # # Ceremony just like before but for zkey this time
 yarn snarkjs zkey contribute \
@@ -47,9 +47,9 @@ yarn snarkjs zkey contribute \
 
 # #  Verify zkey
 yarn snarkjs zkey verify \
-    zk/update_state_verifier.r1cs zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/update_state_verifier_0003.zkey
+    zk/update_state_verifier.r1cs zk/ptau/pot20_final.ptau zk/zkey/update_state_verifier_0003.zkey
 yarn snarkjs zkey verify \
-    zk/withdraw_signature_verifier.r1cs zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/withdraw_signature_verifier_0003.zkey
+    zk/withdraw_signature_verifier.r1cs zk/ptau/pot20_final.ptau zk/zkey/withdraw_signature_verifier_0003.zkey
 
 # # Apply random beacon as before
 yarn snarkjs zkey beacon \
@@ -62,9 +62,9 @@ yarn snarkjs zkey beacon \
 
 # # Optional: verify final zkey
 yarn snarkjs zkey verify \
-    zk/update_state_verifier.r1cs zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/update_state_verifier_final.zkey
+    zk/update_state_verifier.r1cs zk/ptau/pot20_final.ptau zk/zkey/update_state_verifier_final.zkey
 yarn snarkjs zkey verify \
-    zk/withdraw_signature_verifier.r1cs zk/ptau/powersOfTau28_hez_final_20.ptau zk/zkey/withdraw_signature_verifier_final.zkey
+    zk/withdraw_signature_verifier.r1cs zk/ptau/pot20_final.ptau zk/zkey/withdraw_signature_verifier_final.zkey
 
 # # Export verification key
 yarn snarkjs zkey export verificationkey \
