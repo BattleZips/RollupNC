@@ -29,6 +29,8 @@ abstract contract IRollup {
     IMiMC public mimc;
     IMiMCMerkle public merkle;
     ITokenRegistry public registry;
+    IVerifier public usv; // usv = update state verifier
+    IVerifier public wsv; // wsv = withdraw signature verifier
 
     uint256 public currentRoot;
     address public coordinator;
@@ -43,21 +45,6 @@ abstract contract IRollup {
     // (queueNumber => [pubkey_x, pubkey_y, balance, nonce, token_type])
     mapping(uint256 => uint256) public deposits; //leaf idx => leafHash
     mapping(uint256 => uint256) public updates; //txRoot => update idx
-
-    constructor(
-        address _mimcContractAddr,
-        address _mimcMerkleContractAddr,
-        address _tokenRegistryAddr
-    ) public {
-        mimc = IMiMC(_mimcContractAddr);
-        merkle = IMiMCMerkle(_mimcMerkleContractAddr);
-        registry = ITokenRegistry(_tokenRegistryAddr);
-        currentRoot = merkle.zeroCache(BAL_DEPTH);
-        coordinator = msg.sender;
-        queueNumber = 0;
-        depositSubtreeHeight = 0;
-        updateNumber = 0;
-    }
 
     /**
      * @dev modifier onlyCoordinator
@@ -96,69 +83,25 @@ abstract contract IRollup {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c
-    ) public {
-        require(txInfo[7] > 0, "invalid tokenType");
-        require(updates[txInfo[8]] > 0, "txRoot does not exist");
-        uint256[] memory txArray = new uint256[](8);
-        for (uint256 i = 0; i < 8; i++) {
-            txArray[i] = txInfo[i];
-        }
-        uint256 txLeaf = mimcMerkle.hashMiMC(txArray);
-        require(
-            txInfo[8] == mimcMerkle.getRootFromProof(txLeaf, position, proof),
-            "transaction does not exist in specified transactions root"
-        );
-
-        // message is hash of nonce and recipient address
-        uint256[] memory msgArray = new uint256[](2);
-        msgArray[0] = txInfo[5];
-        msgArray[1] = uint256(recipient);
-
-        require(
-            withdraw_verifyProof(
-                a,
-                b,
-                c,
-                [txInfo[0], txInfo[1], mimcMerkle.hashMiMC(msgArray)]
-            ),
-            "eddsa signature is not valid"
-        );
-
-        // transfer token on tokenContract
-        if (txInfo[7] == 1) {
-            // ETH
-            recipient.transfer(txInfo[6]);
-        } else {
-            // ERC20
-            address tokenContractAddress = tokenRegistry.registeredTokens(
-                txInfo[7]
-            );
-            tokenContract = IERC20(tokenContractAddress);
-            require(
-                tokenContract.transfer(recipient, txInfo[6]),
-                "transfer failed"
-            );
-        }
-
-        emit Withdraw(txInfo, recipient);
-    }
+    ) public virtual;
 
     //call methods on TokenRegistry contract
 
-    function registerToken(address tokenContractAddress) public {
-        tokenRegistry.registerToken(tokenContractAddress);
-    }
+    function registerToken(address tokenContractAddress) public virtual;
 
-    function approveToken(address tokenContractAddress) public onlyCoordinator {
-        tokenRegistry.approveToken(tokenContractAddress);
-        emit RegisteredToken(tokenRegistry.numTokens(), tokenContractAddress);
-    }
+    /**
+     * @dev modifier onlyCoordinator
+     */
+    function approveToken(address tokenContractAddress) public virtual;
 
-    // helper functions
-    function removeDeposit(uint256 index) internal returns (uint256[] memory) {
-        require(index < pendingDeposits.length, "index is out of bounds");
+    /**
+     * Internal helper function for removing deposit from pending queue
+     * @param _index - the index of the deposit in the queue to remove
+     */
+    function removeDeposit(uint256 _index) internal returns (uint256[] memory) {
+        require(_index < pendingDeposits.length, "index is out of bounds");
 
-        for (uint256 i = index; i < pendingDeposits.length - 1; i++) {
+        for (uint256 i = _index; i < pendingDeposits.length - 1; i++) {
             pendingDeposits[i] = pendingDeposits[i + 1];
         }
         delete pendingDeposits[pendingDeposits.length - 1];
