@@ -1,17 +1,23 @@
 const { buildEddsa, buildMimc7 } = require('circomlibjs');
 const { randomBytes } = require('crypto');
-const { read } = require('fs');
+const bigInt = require('big-integer')
 const RollupAccount = require('./rollupAccount');
 const RollupTransaction = require('./rollupTransaction');
 
 async function main() {
+    // get crypto libraries
     const { mimc7, eddsa } = await initCrypto();
-    const priv = randomBytes(32);
-    const pub = eddsa.prv2pub(priv);
-    const readablePub = Buffer.from(pub[0]).toString('hex') + Buffer.from(pub[1]).toString('hex');
-    console.log('q', readablePub)
-    const emptyAccount = RollupAccount.getEmptyAccount(mimc7);
-    console.log(emptyAccount);
+    // create test accounts
+    const accounts = [randomBytes(32), randomBytes(32)].map((prv) => { return { prv, pub: eddsa.prv2pub(prv) } });
+    // try a real dummy tx
+    const realTx = new RollupTransaction(mimc7, eddsa, accounts[0].pub, 0, accounts[1].pub, 0, 1000000, 0);
+    realTx.sign(accounts[0].prv);
+    console.log(`Real tx integrity status: ${realTx.verify()}`);
+    // try a fake dummy tx
+    const fakeTx = new RollupTransaction(mimc7, eddsa, accounts[0].pub, 0, accounts[1].pub, 0, 1000000, 0);
+    fakeTx.sign(accounts[1].prv);
+    console.log(`Fake tx integrity status: ${fakeTx.verify()}`);
+    
 }
 
 async function initCrypto() {

@@ -17,6 +17,8 @@
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/contracts": "^4.7.0",
+    "@zk-kit/incremental-merkle-tree": "^0.4.3",
+    "big-integer": "^1.6.51",
     "blake-hash": "^2.0.0",
     "chai": "^4.3.6",
     "circom_tester": "^0.0.14",

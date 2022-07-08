@@ -1,6 +1,7 @@
-require('dotenv').config()
+require('dotenv').config();
+const fs = require('fs');
+const { poseidonContract } = require('circomlibjs')
 const { ethers } = require('hardhat');
-const fs = require('fs')
 
 
 /**
@@ -9,7 +10,15 @@ const fs = require('fs')
 module.exports = async ({ run, ethers, network, deployments }) => {
 
     // get deploying account
-    const [operator] = await ethers.getSigners();
+    const [operator, alice, bob, charlie, david, emily] = await ethers.getSigners();
+
+    // deploy poseidonT3 (2 inputs)
+    const poseidonT3ABI = poseidonContract.generateABI(2);
+    console.log('abi: ', poseidonT3ABI)
+    const poseidonT3Bytecode = poseidonContract.createCode(2);
+    const poseidonT3Factory = new ethers.ContractFactory(poseidonT3ABI, poseidonT3Bytecode, operator);
+    const poseidonT3 = await poseidonT3Factory.deploy();
+    await poseidonT3.deployed();
 
     // deploy verifiers
     const { address: usvAddress } = await deployments.deploy('UpdateStateVerifier', {
@@ -55,7 +64,7 @@ module.exports = async ({ run, ethers, network, deployments }) => {
     //     } catch (err) {
     //         throw new Error("Failed to add contract & methods to Biconomy", err)
     //     }
-        
+
     // }
     // // add circuit files to ipfs if not hardhat
     // if (chainId !== 31337) await ipfsDeploy()
@@ -136,7 +145,7 @@ const verifyEtherscan = async (bvAddress, svAddress, forwarder, gameAddress) => 
     } else if (chains[1].includes(chainId) && !POLYGONSCAN) {
         console.log(`Polygonscan API key not found, skipping verification on chain ${chainId}`)
         return
-    }     
+    }
     // error message
     const WAIT_ERR = "Wait 30 seconds for tx to propogate and rerun"
     try {
