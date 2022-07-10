@@ -444,6 +444,11 @@
     tweetnacl "^1.0.3"
     tweetnacl-util "^0.15.1"
 
+"@nomicfoundation/hardhat-toolbox@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-toolbox/-/hardhat-toolbox-1.0.1.tgz#54fd35f383b47fcade5ec395a5481354fdc7b4cc"
+  integrity sha512-wX3TsRnL2G7s9pZ3594a+NE6ffTocs4kENH4xTeo2ZVaYPx4xG9SqcX1Qyr5nZSmNs5prQUZx060kcF9nk4vkA==
+
 "@nomiclabs/hardhat-ethers@^2.0.6":
   version "2.0.6"
   resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.0.6.tgz#1c695263d5b46a375dcda48c248c4fba9dfe2fc2"

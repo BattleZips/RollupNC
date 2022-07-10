@@ -12,13 +12,17 @@ module.exports = async ({ run, ethers, network, deployments }) => {
     // get deploying account
     const [operator, alice, bob, charlie, david, emily] = await ethers.getSigners();
 
-    // deploy poseidonT3 (2 inputs)
+    // deploy hash constructs for 2 and 5 inputs
     const poseidonT3ABI = poseidonContract.generateABI(2);
-    console.log('abi: ', poseidonT3ABI)
     const poseidonT3Bytecode = poseidonContract.createCode(2);
     const poseidonT3Factory = new ethers.ContractFactory(poseidonT3ABI, poseidonT3Bytecode, operator);
     const poseidonT3 = await poseidonT3Factory.deploy();
     await poseidonT3.deployed();
+    const poseidonT6ABI = poseidonContract.generateABI(5);
+    const poseidonT6Bytecode = poseidonContract.createCode(5);
+    const poseidonT6Factory = new ethers.ContractFactory(poseidonT6ABI, poseidonT6Bytecode, operator);
+    const poseidonT6 = await poseidonT6Factory.deploy();
+    await poseidonT6.deployed();
 
     // deploy verifiers
     const { address: usvAddress } = await deployments.deploy('UpdateStateVerifier', {

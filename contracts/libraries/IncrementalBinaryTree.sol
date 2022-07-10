@@ -2,7 +2,6 @@
 pragma solidity ^0.8.15;
 import {PoseidonT3} from "./Poseidon.sol";
 
-/// BIMT: Binary Incrmeental Merkle Tree
 /// https://github.com/privacy-scaling-explorations/zk-kit/blob/main/packages/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol
 /// @title Incremental binary Merkle tree.
 /// @dev The incremental tree allows to calculate the root hash each time a leaf is added, ensuring the integrity of the tree.

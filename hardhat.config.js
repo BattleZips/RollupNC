@@ -4,6 +4,7 @@ require("@nomiclabs/hardhat-waffle")
 require('hardhat-deploy')
 require('hardhat-deploy-ethers')
 require('@nomiclabs/hardhat-etherscan')
+require('./tasks/zeroCache');
 
 // private environment information
 const { INFURA, MNEMONIC, ETHERSCAN, POLYGONSCAN } = process.env
