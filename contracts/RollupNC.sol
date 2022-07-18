@@ -153,6 +153,13 @@ contract RollupNC {
         removeDeposit(true);
         uint8 numAdded = uint8(2**depositSubtreeHeight);
         depositQueueSize -= numAdded;
+        // set deposit subtree height
+        depositSubtreeHeight = 0;
+        uint256 tmp = depositQueueSize;
+        while(tmp / 2 > 0) {
+            depositSubtreeHeight += 1;
+            tmp = tmp / 2;
+        }
         emit ConfirmDeposit(oldRoot, currentRoot, numAdded);
         return currentRoot;
     }
@@ -314,7 +321,7 @@ contract RollupNC {
         uint256 _leaf,
         uint256[] memory _position,
         uint256[] memory _proof
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 hash = _leaf;
         for (uint8 i = 0; i < _proof.length; i++) {
             if (_position[i] == 0)

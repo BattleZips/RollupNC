@@ -7,10 +7,12 @@ const { IncrementalMerkleTree } = require('@zk-kit/incremental-merkle-tree');
 const { expect } = require('chai');
 
 describe("Test rollup deposits", async () => {
-    let eddsa, poseidon, F;
-    let signers, accounts;
-    let rollup;
-    let zeroCache;
+    let eddsa, poseidon, F; // circomlibjs objects
+    let signers, accounts; // ecdsa/ eddsa wallets
+    let rollup; // on-chain contract
+    let zeroCache; // cache balance tree zeros
+    let tree, subtree; // persist outside single unit test scope
+
     before(async () => {
 
         // initial
@@ -79,6 +81,7 @@ describe("Test rollup deposits", async () => {
                 const current = F.toObject(poseidon([accounts.alice.L2.root, accounts.bob.L2.root]));
                 const expectedRoot = F.toObject(poseidon([sibling, current]));
                 const depositRoot = F.toObject((await rollup.describeDeposits())._leaves[0]);
+                subtree = depositRoot;
                 expect(expectedRoot).to.be.equal(depositRoot);
             })
             it('Process Batch #1 (4 new balance leaves)', async () => {
@@ -86,14 +89,14 @@ describe("Test rollup deposits", async () => {
                 const emptyLeaf = L2Account.emptyRoot(poseidon)
                 const coordinatorPubkey = accounts.coordinator.L2.pubkey.map(point => F.toObject(point));
                 const coordinatorLeaf = F.toObject(poseidon([...coordinatorPubkey, 0, 0, 0]));
-                const expectTree = new IncrementalMerkleTree(poseidon, 4, 0);
-                expectTree.insert(emptyLeaf);
-                expectTree.insert(coordinatorLeaf);
-                expectTree.insert(accounts.alice.L2.root);
-                expectTree.insert(accounts.bob.L2.root);
+                tree = new IncrementalMerkleTree(poseidon, 4, 0);
+                tree.insert(emptyLeaf);
+                tree.insert(coordinatorLeaf);
+                tree.insert(accounts.alice.L2.root);
+                tree.insert(accounts.bob.L2.root);
                 const expected = {
                     oldRoot: zeroCache[zeroCache.length - 1],
-                    newRoot: F.toObject(expectTree.root)
+                    newRoot: F.toObject(tree.root)
                 }
                 // construct transaction
                 const position = [0, 0];
@@ -109,7 +112,7 @@ describe("Test rollup deposits", async () => {
 
         })
         describe('Batch #2', async () => {
-            xit('Deposit #4 (Charlie)', async () => {
+            it('Deposit #4 (Charlie)', async () => {
                 // check deposit fn execution logic
                 const l2Pubkey = accounts.charlie.L2.pubkey.map(point => F.toObject(point));
                 const tx = rollup.connect(accounts.charlie.L1).deposit(l2Pubkey, 500, 1, { value: 500 });
@@ -120,7 +123,7 @@ describe("Test rollup deposits", async () => {
                 const depositRoot = F.toObject((await rollup.describeDeposits())._leaves[0]);
                 expect(expectedRoot).to.be.equal(depositRoot);
             })
-            xit('Deposit #5 (David)', async () => {
+            it('Deposit #5 (David)', async () => {
                 // check deposit fn execution logic
                 const l2Pubkey = accounts.david.L2.pubkey.map(point => F.toObject(point));
                 const tx = rollup.connect(accounts.david.L1).deposit(l2Pubkey, 499, 1, { value: 500 });
@@ -134,8 +137,22 @@ describe("Test rollup deposits", async () => {
                 const depositRoot = F.toObject((await rollup.describeDeposits())._leaves[0]);
                 expect(expectedRoot).to.be.equal(depositRoot);
             })
-            xit('Process Batch #2 (2 new balance leaves', async () => {
-
+            it('Process Batch #2 (2 new balance leaves)', async () => {
+                // construct expected values
+                const oldRoot = F.toObject(tree.root);
+                tree.insert(accounts.charlie.L2.root);
+                tree.insert(accounts.david.L2.root);
+                const expected = { oldRoot, newRoot: F.toObject(tree.root) }
+                // construct transaction
+                const position = [0, 1, 0];
+                const proof = [zeroCache[1], subtree, zeroCache[3]];
+                const tx = rollup.connect(accounts.coordinator.L1).processDeposits(1, position, proof);
+                // verify execution integrity
+                await expect(tx).to.emit(rollup, "ConfirmDeposit").withArgs(
+                    expected.oldRoot,
+                    expected.newRoot,
+                    2
+                );
             })
         })
     })
