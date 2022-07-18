@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const ZERO = BigInt(0);
 
 /**
  * @title Offchain (EdDSA) account state
@@ -119,6 +118,6 @@ module.exports = class L2Account {
      * @return {bigint[2]} - the account pubkey
      */
     getPubkey() {
-        return this.pubkey.map(point => BigInt(`0x${Buffer.from(point).toString('hex')}`));
+        return this.pubkey.map(point => this.F.toObject(point));
     }
 }

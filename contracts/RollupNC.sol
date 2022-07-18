@@ -36,6 +36,7 @@ contract RollupNC {
 
     event RegisteredToken(uint256 tokenType, address tokenContract);
     event RequestDeposit(uint256[2] pubkey, uint256 amount, uint256 tokenType);
+    event ConfirmDeposit(uint256 oldRoot, uint256 newRoot, uint8 numAdded);
     event UpdatedState(uint256 currentRoot, uint256 oldRoot, uint256 txRoot);
     event Withdraw(uint256[9] accountInfo, address recipient);
 
@@ -60,7 +61,7 @@ contract RollupNC {
         uint256 _zero,
         uint256[] memory _zeroCache
     ) {
-        require(_depth[0] == _zeroCache.length, "Param size mismatch");
+        require(_depth[0] + 1 == _zeroCache.length, "Param size mismatch");
         // assign contract references
         usv = IVerifier(_addresses[0]);
         wsv = IVerifier(_addresses[1]);
@@ -71,7 +72,7 @@ contract RollupNC {
         txDepth = _depth[1];
         ZERO = _zero;
         zeroCache = _zeroCache;
-        currentRoot = zeroCache[balDepth - 1];
+        currentRoot = zeroCache[balDepth];
         coordinator = msg.sender;
     }
 
@@ -103,7 +104,6 @@ contract RollupNC {
         uint256 depositHash = PoseidonT6.poseidon(
             [pubkey[0], pubkey[1], amount, uint256(0), tokenType]
         );
-
         pendingDeposits[depositQueueEnd] = depositHash;
         depositQueueEnd++;
         depositQueueSize++;
@@ -144,13 +144,16 @@ contract RollupNC {
             "specified subtree is not empty"
         );
         // insert multiple leafs (insert subtree) by computing new root
+        uint256 oldRoot = currentRoot;
         currentRoot = getRootFromProof(
             pendingDeposits[depositQueueStart],
             subtreePosition,
             subtreeProof
         );
         removeDeposit(true);
-        depositQueueSize -= uint8(2**depositSubtreeHeight);
+        uint8 numAdded = uint8(2**depositSubtreeHeight);
+        depositQueueSize -= numAdded;
+        emit ConfirmDeposit(oldRoot, currentRoot, numAdded);
         return currentRoot;
     }
 
@@ -291,8 +294,7 @@ contract RollupNC {
         // compute height
         uint8 _i = 0; // track insert index, should always be safe
         for (uint256 i = 1; i <= depositSubtreeHeight; i++) {
-            if ((depositQueueSize & (uint256(1) << i)) > 0)
-                _heights[_i++] = i;
+            if ((depositQueueSize & (uint256(1) << i)) > 0) _heights[_i++] = i;
         }
         // store leaves
         for (uint256 i = 0; i < num; i++)
@@ -312,7 +314,7 @@ contract RollupNC {
         uint256 _leaf,
         uint256[] memory _position,
         uint256[] memory _proof
-    ) public pure returns (uint256) {
+    ) public view returns (uint256) {
         uint256 hash = _leaf;
         for (uint8 i = 0; i < _proof.length; i++) {
             if (_position[i] == 0)
