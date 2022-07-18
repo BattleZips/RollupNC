@@ -1,7 +1,7 @@
 {
   "name": "battlezips-demo-rollup",
   "version": "1.0.0",
-  "description": "Rollup demo upgraded to circom 2.o Based on (https://github.com/barryWhiteHat/roll_up)",
+  "description": "Rollup demo upgraded to circom 2.0 Based on (https://github.com/barryWhiteHat/roll_up)",
   "scripts": {
     "ptau:hermez": "node scripts/hermezPtau.js",
     "ptau:local": "./scripts/ptau.sh",
@@ -19,6 +19,7 @@
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/contracts": "^4.7.0",
     "@zk-kit/incremental-merkle-tree": "^0.4.3",
+    "@zk-kit/incremental-merkle-tree.sol": "^1.0.0",
     "big-integer": "^1.6.51",
     "blake-hash": "^2.0.0",
     "chai": "^4.3.6",
@@ -26,12 +27,17 @@
     "circomlib": "^2.0.5",
     "circomlibjs": "^0.1.6",
     "dotenv": "^16.0.1",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.6.9",
     "hardhat": "^2.9.9",
     "hardhat-deploy": "^0.11.11",
     "hardhat-deploy-ethers": "^0.3.0-beta.13",
     "snarkjs": "^0.4.22"
   },
   "devDependencies": {
-    "puppeteer": "^15.2.0"
+    "@types/node": "^18.0.3",
+    "puppeteer": "^15.2.0",
+    "ts-node": "^10.8.2",
+    "typescript": "^4.7.4"
   }
 }

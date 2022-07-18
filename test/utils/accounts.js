@@ -9,6 +9,7 @@ module.exports = class L2Account {
     /// CIRCOMLIBJS HELPERS ///
     poseidon; // Poseidon Hasher Object
     eddsa; // EdDSA Signing/ Verification w. stored private key
+    F; // Curve object from ffjavascript
 
     /// ACCOUNT STATE ///
     index; // bigint
@@ -42,7 +43,8 @@ module.exports = class L2Account {
     ) {
         // assign circomlibjs helpers
         this.poseidon = _poseidon;
-        this.eddsa = _eddsa
+        this.eddsa = _eddsa;
+        this.F = _poseidon.F;
         // set account wallet
         this.prvkey = _prvkey;
         this.pubkey = this.eddsa.prv2pub(this.prvkey);
@@ -60,8 +62,8 @@ module.exports = class L2Account {
      * @return { bigint }- initialized account root
      */
     static emptyRoot(_poseidon) {
-        const data = [ZERO, ZERO, ZERO, ZERO, ZERO];
-        return _poseidon(data)
+        const data = [0, 0, 0, 0, 0];
+        return _poseidon.F.toObject(_poseidon(data));
     }
 
     /**
@@ -80,14 +82,8 @@ module.exports = class L2Account {
      * @return { bigint } - the MiMC7 hash of the account state
      */
     hash() {
-        const data = [
-            this.pubkey[0].toString(),
-            this.pubkey[1].toString(),
-            this.balance.toString(),
-            this.nonce.toString(),
-            this.tokenType.toString()
-        ]
-        return this.mimc7.multiHash(data);
+        const data = [...this.getPubkey(), this.balance, this.nonce, this.tokenType];
+        return this.F.toObject(this.poseidon(data));
     }
 
     /**
@@ -111,13 +107,18 @@ module.exports = class L2Account {
 
     /**
      * Sign a message with the account's private key using Poseidon EdDSA
-     * @param {bigint} data - the data to sign the account with
+     * @param {bigint} data - the data for this account to sign
+     * @return {bigint} - a signature on the data by this account
      */
     sign(data) {
+        return this.eddsa.signPoseidon(prv, data);
+    }
 
+    /**
+     * Return the account's pubkey as bigint
+     * @return {bigint[2]} - the account pubkey
+     */
+    getPubkey() {
+        return this.pubkey.map(point => BigInt(`0x${Buffer.from(point).toString('hex')}`));
     }
 }
-
-
-
-

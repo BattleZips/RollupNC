@@ -10,10 +10,9 @@ import "./interfaces/ITokenRegistry.sol";
 contract TokenRegistry is ITokenRegistry {
     /**
      * Instantiate the RollupNC's ERC20 Token Registry
-     * @param _coordinator - the address of the permissioned off-chain roll-up sequencer
      */
-    constructor(address _coordinator) {
-        coordinator = _coordinator;
+    constructor() {
+        coordinator = msg.sender;
         registryIndex = 1; // ETH
     }
 

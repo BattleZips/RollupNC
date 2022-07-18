@@ -1,14 +1,21 @@
 require('dotenv').config();
 const fs = require('fs');
-const { poseidonContract } = require('circomlibjs')
+const { poseidonContract, buildPoseidonOpt } = require('circomlibjs')
 const { ethers } = require('hardhat');
-
 
 /**
  * Deploy All Contracts
  */
 module.exports = async ({ run, ethers, network, deployments }) => {
 
+    // get zero cache
+    const depths = [4, 2];
+    const poseidon = await buildPoseidonOpt();
+    const zeroCache = [BigInt(0)];
+    for (let i = 1; i < depths[0]; i++) {
+        const root = zeroCache[i - 1];
+        zeroCache.push(BigInt(`0x${Buffer.from(poseidon([root, root])).toString('hex')}`));
+    }
     // get deploying account
     const [operator, alice, bob, charlie, david, emily] = await ethers.getSigners();
 
@@ -34,48 +41,27 @@ module.exports = async ({ run, ethers, network, deployments }) => {
         log: true
     })
 
-
-    // // select forwarder
-    // const chainId = ethers.provider._network.chainId
-    // const forwarder = Forwarders[chainId] ? Forwarders[chainId] : ethers.constants.AddressZero
-
-    // // deploy Battleship Game Contract / Victory token
-    // const { address: gameAddress } = await deployments.deploy('BattleshipGame', {
-    //     from: operator.address,
-    //     args: [forwarder, bvAddress, svAddress],
-    //     log: true
-    // })
-
-    // // verify deployed contracts
-    // const delay = ms => new Promise(res => setTimeout(res, ms));
-    // await delay(3000)
-    // console.log("30 second wait for deploy TX's to propogate to block explorer before verification")
-    // await verifyEtherscan(bvAddress, svAddress, forwarder, gameAddress)
-
-    // // add to biconomy
-    // // will skip biconomy enrollment if forwarder address is 0 or biconomy api not provided
-    // // will skip if not a supported network
-    // // biconomy api will change depending on network and must manually be updated in .env :(
-    // const { BICONOMY_AUTH, BICONOMY_API } = process.env
-    // if (BICONOMY_API === undefined || BICONOMY_AUTH == undefined)
-    //     console.log('Biconomy API keys not provided, skipping')
-    // else if (!Object.keys(Forwarders).includes(chainId.toString()))
-    //     console.log('Skipping Biconomy integration for unsupported network')
-    // else {
-    //     try {
-    //         await addContract(gameAddress)
-    //         console.log(`Biconomy configured for BattleshipGame.sol on chain ${chainId}`)
-    //     } catch (err) {
-    //         throw new Error("Failed to add contract & methods to Biconomy", err)
-    //     }
-
-    // }
-    // // add circuit files to ipfs if not hardhat
-    // if (chainId !== 31337) await ipfsDeploy()
-    // else console.log('Skipping IPFS circuit publication for hardhat network')
-
-    // // complete
-    console.log(`RollupNC V2 Deployment Completed Successfully on chain ${ethers.provider._network.chainId}`)
+    // deploy token registry
+    const { address: registryAddress } = await deployments.deploy('TokenRegistry', {
+        from: operator.address,
+        log: true
+    })
+    
+    // deploy rollup contract
+    const { address: rollupAddress } = await deployments.deploy('RollupNC', {
+        from: operator.address,
+        args: [
+            [usvAddress, wsvAddress, registryAddress],
+            depths,
+            0,
+            zeroCache
+        ],
+        libraries: {
+            PoseidonT3: poseidonT3.address,
+            PoseidonT6: poseidonT6.address
+        }
+    })
+    console.log('Deployed Rollup to ', rollupAddress)
 }
 
 /**
