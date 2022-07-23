@@ -45,6 +45,11 @@ contract RollupNC {
         _;
     }
 
+    // modifier txTreeExists(uint256 _root) {
+    //     assert(updates[txInfo[8]] > 0 "Could not find root to prove inclusion");
+    //     _;
+    // }
+
     /// @dev construct a new non-custodial on-chain rollup
     /// @param _addresses: array of addresses used in the rollup contract
     ///   [0]: Update State Verifier contract
@@ -172,7 +177,7 @@ contract RollupNC {
     //     uint256[2] memory a,
     //     uint256[2][2] memory b,
     //     uint256[2] memory c
-    // ) public {
+    // ) public txTreeExists(txInfo[8]) {
     //     require(txInfo[7] > 0, "invalid tokenType");
     //     require(updates[txInfo[8]] > 0, "txRoot does not exist");
     //     uint256[] memory txArray = new uint256[](8);

@@ -1,21 +1,22 @@
+pragma circom 2.0.3;
+
 include "./balance_leaf.circom";
 include "./leaf_existence.circom";
 
 template BalanceExistence(k){
 
-    signal input x;
-    signal input y;
-    signal input balance;
-    signal input nonce;
-    signal input tokenType;
+    signal input pubkey[2]; // Account EdDSA pubkey [x, y]
+    signal input balance; // Account token balance
+    signal input nonce; // Number of transactions made by the account
+    signal input tokenType; // Token registry index for token type
 
-    signal input balanceRoot;
-    signal input paths2rootPos[k];
-    signal input paths2root[k];
+    signal input balanceRoot; // root of balance tree
+    signal input position[k]; // balance tree traversal path to leaf checked for inclusion
+    signal input proof[k]; // siblings proving leaf inclusion
 
     component balanceLeaf = BalanceLeaf();
-    balanceLeaf.x <== x;
-    balanceLeaf.y <== y;
+    balanceLeaf.pubkey[0] <== pubkey[0];
+    balanceLeaf.pubkey[1] <== pubkey[1];
     balanceLeaf.balance <== balance;
     balanceLeaf.nonce <== nonce; 
     balanceLeaf.tokenType <== tokenType;
@@ -25,8 +26,8 @@ template BalanceExistence(k){
     balanceExistence.root <== balanceRoot;
 
     for (var s = 0; s < k; s++){
-        balanceExistence.paths2rootPos[s] <== paths2rootPos[s];
-        balanceExistence.paths2root[s] <== paths2root[s];
+        balanceExistence.position[s] <== position[s];
+        balanceExistence.proof[s] <== proof[s];
     }
 
 

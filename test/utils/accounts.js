@@ -110,7 +110,7 @@ module.exports = class L2Account {
      * @return {bigint} - a signature on the data by this account
      */
     sign(data) {
-        return this.eddsa.signPoseidon(prv, data);
+        return this.eddsa.signPoseidon(this.prvkey, data);
     }
 
     /**

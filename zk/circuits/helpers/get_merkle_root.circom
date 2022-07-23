@@ -1,31 +1,31 @@
-include "../../../node_modules/circomlib/circuits/eddsamimc.circom";
-include "../../../node_modules/circomlib/circuits/mimc.circom";
+pragma circom 2.0.3;
 
-template GetMerkleRoot(k){
-// k is depth of tree
+include "../../../node_modules/circomlib/circuits/poseidon.circom";
 
-    signal input leaf;
-    signal input paths2root[k];
-    signal input paths2rootPos[k];
+template GetMerkleRoot(depth){
+// compute a merkle root for a given leaf with included proof and tree traversal parameters
+
+    signal input leaf; // leaf root being included
+    signal input proof[depth]; // sibling node values
+    signal input positions[depth]; // position in binary tree
 
     signal output out;
 
     // hash of first two entries in tx Merkle proof
-    component merkleRoot[k];
-    merkleRoot[0] = MultiMiMC7(2,91);
-    merkleRoot[0].in[0] <== leaf - paths2rootPos[0]* (leaf - paths2root[0]);
-    merkleRoot[0].in[1] <== paths2root[0] - paths2rootPos[0]* (paths2root[0] - leaf);
-    merkleRoot[0].k <== 0;
+    component merkleRoot[depth];
+    merkleRoot[0] = Poseidon(2);
+    merkleRoot[0].inputs[0] <== leaf - positions[0] * (leaf - proof[0]);
+    merkleRoot[0].inputs[1] <== proof[0] - positions[0] * (proof[0] - leaf);
+
 
     // hash of all other entries in tx Merkle proof
-    for (var v = 1; v < k; v++){
-        merkleRoot[v] = MultiMiMC7(2,91);
-        merkleRoot[v].in[0] <== merkleRoot[v-1].out - paths2rootPos[v]* (merkleRoot[v-1].out - paths2root[v]);
-        merkleRoot[v].in[1] <== paths2root[v] - paths2rootPos[v]* (paths2root[v] - merkleRoot[v-1].out);
-        merkleRoot[v].k <== 0;
+    for (var i = 1; i < depth; i++){
+        merkleRoot[i] = Poseidon(2);
+        merkleRoot[i].inputs[0] <== merkleRoot[i-1].out - positions[i] * (merkleRoot[i-1].out - proof[i]);
+        merkleRoot[i].inputs[1] <== proof[i] - positions[i] * (positions[i] - merkleRoot[i-1].out);
     }
 
     // output computed Merkle root
-    out <== merkleRoot[k-1].out;
+    out <== merkleRoot[depth-1].out;
 
 }

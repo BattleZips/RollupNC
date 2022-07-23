@@ -1,54 +1,64 @@
+pragma circom 2.0.3;
+
+
 include "./tx_leaf.circom";
 include "./leaf_existence.circom";
-include "../../../node_modules/circomlib/circuits/eddsamimc.circom";
+include "../../../node_modules/circomlib/circuits/eddsaposeidon.circom";
 
-template TxExistence(k){
-// k is depth of tx tree
+template TxExistence(depth){
 
-    signal input fromX;
-    signal input fromY;
-    signal input fromIndex;
-    signal input toX;
-    signal input toY;
-    signal input nonce;
-    signal input amount;
-    signal input tokenType;
+    /// SIGNALS IO ///
 
-    signal input txRoot;
-    signal input paths2rootPos[k];
-    signal input paths2root[k];
+    // Transaction definition
+    signal input from[2]; // Sender EdDSA pubkey [x, y]
+    signal input fromIndex; // Sender index in balance tree
+    signal input to[2]; // Receiver EdDSA pubkey [x, y]
+    signal input nonce; // the sender's nonce for this tx
+    signal input amount; // amount of tokens transfered
+    signal input tokenType; // registry index for token type
 
-    signal input R8x;
-    signal input R8y;
-    signal input S;
+    // Inclusion proof
+    signal input root; // Transaction tree root
+    signal input positions[depth]; // path to leaf being checked for inclusion
+    signal input proof[depth]; // sibling nodes
+    
+    // Transaction signature
+    signal input signature[3]; // EdDSA signature on tx leaf by Sender [R8x, R8y, S]
+    
 
-    component txLeaf = TxLeaf();
-    txLeaf.fromX <== fromX;
-    txLeaf.fromY <== fromY;
-    txLeaf.fromIndex <== fromIndex;
-    txLeaf.toX <== toX;
-    txLeaf.toY <== toY;
-    txLeaf.nonce <== nonce; 
-    txLeaf.amount <== amount;
-    txLeaf.tokenType <== tokenType;
+    /// COMPONENTS ///
+    component leaf = TxLeaf(); // compute tx leaf root from full tx leaf definition
+    component leafExistence = LeafExistence(depth); // constraint by merkle inclusion proof
+    component eddsa = EdDSAPoseidonVerifier(); // constraint by eddsa signature
 
-    component txExistence = LeafExistence(k);
-    txExistence.leaf <== txLeaf.out;
-    txExistence.root <== txRoot;
+    /// CIRCUIT LOGIC ///
 
-    for (var q = 0; q < k; q++){
-        txExistence.paths2rootPos[q] <== paths2rootPos[q];
-        txExistence.paths2root[q] <== paths2root[q];
+    // Compute tx leaf root
+    leaf.from[0] <== from[0];
+    leaf.from[1] <== from[1];
+    leaf.fromIndex <== fromIndex;
+    leaf.to[0] <== to[0];
+    leaf.to[1] <== to[1];
+    leaf.nonce <== nonce;
+    leaf.amount <== amount;
+    leaf.tokenType <== tokenType;
+
+    // Confirm tx leaf root exists in tx tree root via merkle proof of inclusion
+    leafExistence.leaf <== leaf.out;
+    leafExistence.root <== root;
+    for (var i = 0; i < depth; i++){
+        leafExistence.positions[i] <== positions[i];
+        leafExistence.proof[i] <== proof[i];
     }
 
-    component verifier = EdDSAMiMCVerifier();   
-    verifier.enabled <== 1;
-    verifier.Ax <== fromX;
-    verifier.Ay <== fromY;
-    verifier.R8x <== R8x;
-    verifier.R8y <== R8y;
-    verifier.S <== S;
-    verifier.M <== txLeaf.out;
+    // Verify authenticity of transaction
+    eddsa.enabled <== 1;
+    eddsa.Ax <== from[0];
+    eddsa.Ay <== from[1];
+    eddsa.R8x <== signature[0];
+    eddsa.R8y <== signature[1];
+    eddsa.S <== signature[2];
+    eddsa.M <== leaf.out;
 
 }
 

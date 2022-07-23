@@ -1,27 +1,27 @@
-include "../../../node_modules/circomlib/circuits/mimc.circom";
+pragma circom 2.0.3;
+
+
+include "../../../node_modules/circomlib/circuits/poseidon.circom";
 
 template TxLeaf() {
 
-    signal input fromX;
-    signal input fromY;
-    signal input fromIndex;
-    signal input toX;
-    signal input toY;
-    signal input nonce;
-    signal input amount;
-    signal input tokenType;
+    signal input from[2]; // Sender EdDSA pubkey [x, y]
+    signal input fromIndex; // Sender index in balance tree
+    signal input to[2]; // Receiver EdDSA pubkey [x, y]
+    signal input nonce; // the sender's nonce for this tx
+    signal input amount; // amount of tokens transfered
+    signal input tokenType; // registry index for token type
 
-    signal output out;
+    signal output out; // Transaction root to be used as merkle leaf
 
-    component txLeaf = MultiMiMC7(8,91);
-    txLeaf.in[0] <== fromX;
-    txLeaf.in[1] <== fromY;
-    txLeaf.in[2] <== fromIndex;
-    txLeaf.in[3] <== toX;
-    txLeaf.in[4] <== toY; 
-    txLeaf.in[5] <== nonce;
-    txLeaf.in[6] <== amount;
-    txLeaf.in[7] <== tokenType;
-    txLeaf.k <== 0;
+    component txLeaf = Poseidon(8);
+    txLeaf.inputs[0] <== from[0];
+    txLeaf.inputs[1] <== from[1];
+    txLeaf.inputs[2] <== fromIndex;
+    txLeaf.inputs[3] <== to[0];
+    txLeaf.inputs[4] <== to[1]; 
+    txLeaf.inputs[5] <== nonce;
+    txLeaf.inputs[6] <== amount;
+    txLeaf.inputs[7] <== tokenType;
     out <== txLeaf.out;
 }

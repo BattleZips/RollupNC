@@ -1,24 +1,18 @@
-include "../../node_modules/circomlib/circuits/eddsamimc.circom";
-include "../../node_modules/circomlib/circuits/mimc.circom";
+pragma circom 2.0.3;
+
+include "../../node_modules/circomlib/circuits/eddsaposeidon.circom";
 
 template Main(){
 
-    signal input Ax;
-    signal input Ay;
-    signal input R8x;
-    signal input R8y;
-    signal input S;
-    signal input M;
+    signal input pubkey[2];
+    signal input signature[3];
 
-    component verifier = EdDSAMiMCVerifier();   
-    verifier.enabled <== 1;
-    verifier.Ax <== Ax;
-    verifier.Ay <== Ay;
-    verifier.R8x <== R8x;
-    verifier.R8y <== R8y;
-    verifier.S <== S;
-    verifier.M <== M;
-
+    component verifier = EdDSAPoseidonVerifier();   
+    verifier.Ax <== pubkey[0];
+    verifier.Ay <== pubkey[1];
+    verifier.R8x <== signature[0];
+    verifier.R8y <== signature[1];
+    verifier.S <== signature[2];
 }
 
 component main { public [Ax, Ay, M] } = Main();

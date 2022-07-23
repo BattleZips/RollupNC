@@ -1,25 +1,23 @@
+pragma circom 2.0.3;
+
 include "./get_merkle_root.circom";
 
-// checks for existence of leaf in tree of depth k
-
-template LeafExistence(k){
-// k is depth of tree
-
+template LeafExistence(depth){
+// k: tree depth
+// Constrain proof to a given leaf that can be proven to exist in the given root
     signal input leaf; 
     signal input root;
-    signal input paths2rootPos[k];
-    signal input paths2root[k];
+    signal input proof[depth];
+    signal input positions[depth];
 
-    component computedRoot = GetMerkleRoot(k);
+    component computedRoot = GetMerkleRoot(depth);
     computedRoot.leaf <== leaf;
 
-    for (var w = 0; w < k; w++){
-        computedRoot.paths2root[w] <== paths2root[w];
-        computedRoot.paths2rootPos[w] <== paths2rootPos[w];
+    for (var i = 0; i < depth; i++){
+        computedRoot.proof[i] <== proof[i];
+        computedRoot.positions[i] <== positions[i];
     }
-
-    // equality constraint: input tx root === computed tx root 
+    // equality constraint
     root === computedRoot.out;
-
 }
 
