@@ -1,17 +1,21 @@
 const { deployments, ethers } = require('hardhat')
+const { wasm: wasm_tester } = require('circom_tester');
 const { solidity } = require("ethereum-waffle");
 const { buildEddsa, buildPoseidon } = require('circomlibjs')
-const chai = require("chai").use(solidity)
+const { expect } = require("chai").use(solidity)
 const { initializeContracts, generateAccounts, L2Account } = require('./utils')
 const { IncrementalMerkleTree } = require('@zk-kit/incremental-merkle-tree');
-const { expect } = require('chai');
+const path = require('path');
+
 
 describe("Test rollup deposits", async () => {
-    let eddsa, poseidon, F; // circomlibjs objects
+    let eddsa, poseidon, F, _poseidon; // circomlibjs objects
     let signers, accounts; // ecdsa/ eddsa wallets
-    let rollup; // on-chain contract
     let zeroCache; // cache balance tree zeros
-    let tree, subtree; // persist outside single unit test scope
+    let tree, subtree, root; // persist outside single unit test scope
+    let rollup; // on-chain contract
+    let stateCircuit, withdrawCircuit; // circom tester
+
 
     before(async () => {
 
@@ -20,6 +24,9 @@ describe("Test rollup deposits", async () => {
         poseidon = await buildPoseidon();
         eddsa = await buildEddsa();
         F = poseidon.F;
+        _poseidon = (data) => F.toObject(poseidon(data));
+        // stateCircuit = await wasm_tester(path.resolve('zk/circuits/update_state.circom'));
+
 
         // generate zero cache
         const depths = [4, 2];
@@ -32,6 +39,7 @@ describe("Test rollup deposits", async () => {
         rollup = await initializeContracts(zeroCache);
         // set accounts
         accounts = await generateAccounts(poseidon, eddsa);
+
     })
     describe('Deposits', async () => {
         describe('Batch #1', async () => {
@@ -76,9 +84,9 @@ describe("Test rollup deposits", async () => {
                 accounts.bob.L2.credit(BigInt(15));
                 // check deposit queue
                 const coordinatorPubkey = accounts.coordinator.L2.pubkey.map(point => F.toObject(point));
-                const coordinatorLeaf = F.toObject(poseidon([...coordinatorPubkey, 0, 0, 0]));
-                const sibling = F.toObject(poseidon([L2Account.emptyRoot(poseidon), coordinatorLeaf]))
-                const current = F.toObject(poseidon([accounts.alice.L2.root, accounts.bob.L2.root]));
+                const coordinatorLeaf = poseidon([...coordinatorPubkey, 0, 0, 0]);
+                const sibling = poseidon([L2Account.emptyRoot(poseidon), coordinatorLeaf])
+                const current = poseidon([accounts.alice.L2.root, accounts.bob.L2.root]);
                 const expectedRoot = F.toObject(poseidon([sibling, current]));
                 const depositRoot = F.toObject((await rollup.describeDeposits())._leaves[0]);
                 subtree = depositRoot;
@@ -88,10 +96,10 @@ describe("Test rollup deposits", async () => {
                 // construct expected values
                 const emptyLeaf = L2Account.emptyRoot(poseidon)
                 const coordinatorPubkey = accounts.coordinator.L2.pubkey.map(point => F.toObject(point));
-                const coordinatorLeaf = F.toObject(poseidon([...coordinatorPubkey, 0, 0, 0]));
+                const coordinatorLeaf = poseidon([...coordinatorPubkey, 0, 0, 0]);
                 tree = new IncrementalMerkleTree(poseidon, 4, 0);
                 tree.insert(emptyLeaf);
-                tree.insert(coordinatorLeaf);
+                tree.insert(F.toObject(coordinatorLeaf));
                 tree.insert(accounts.alice.L2.root);
                 tree.insert(accounts.bob.L2.root);
                 const expected = {
@@ -126,7 +134,7 @@ describe("Test rollup deposits", async () => {
             it('Deposit #5 (David)', async () => {
                 // check deposit fn execution logic
                 const l2Pubkey = accounts.david.L2.pubkey.map(point => F.toObject(point));
-                const tx = rollup.connect(accounts.david.L1).deposit(l2Pubkey, 499, 1, { value: 500 });
+                const tx = rollup.connect(accounts.david.L1).deposit(l2Pubkey, 499, 1, { value: 499 });
                 await expect(tx).to.emit(rollup, 'RequestDeposit').withArgs(l2Pubkey, 499, 1);
                 accounts.david.L2.credit(BigInt(499));
                 // check deposit queue
@@ -156,4 +164,11 @@ describe("Test rollup deposits", async () => {
             })
         })
     })
+    describe('Transfers', async () => {
+        it('Transfer from Alice to Bob', async () => {
+            // build all inputs
+
+        })
+    })
 })
+
