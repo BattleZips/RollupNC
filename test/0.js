@@ -379,7 +379,7 @@ describe("Test rollup deposits", async () => {
                 input.fromTokenType.push(tokenType);
                 input.signature.push(signature);
                 input.fromBalance.push(fromBalance);
-                input.toNonce.push(accounts.bob.L2.nonce);
+                input.toNonce.push(accounts.david.L2.nonce);
                 input.toBalance.push(toBalance);
                 input.toTokenType.push(tokenType);
                 input.txPositions.push(txPositions);
@@ -432,7 +432,7 @@ describe("Test rollup deposits", async () => {
                 input.fromTokenType.push(tokenType);
                 input.signature.push(signature);
                 input.fromBalance.push(fromBalance);
-                input.toNonce.push(accounts.bob.L2.nonce);
+                input.toNonce.push(BigInt(0));
                 input.toBalance.push(BigInt(0));
                 input.toTokenType.push(BigInt(0)); // withdraw has toTokenType of 0
                 input.txPositions.push(txPositions);

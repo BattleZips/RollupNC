@@ -34,11 +34,11 @@ template Main(balDepth, txDepth) {
 
     // auxiliary merkle proof inputs
     signal input txPositions[numTxs][txDepth]; // path to tx leaf being checked for inclusion in tx tree
-    signal input txProof[numTxs][balDepth]; // sibling nodes in tx tree proof
+    signal input txProof[numTxs][txDepth]; // sibling nodes in tx tree proof
     signal input fromPositions[numTxs][balDepth]; // path to sender balance leaf being checked for inclusion
     signal input fromProof[numTxs][balDepth]; // sibling nodes in sender balance tree proof
     signal input toPositions[numTxs][balDepth]; // path to receiver balance leaf being checked for inclusion
-    signal input fromProof[numTxs][balDepth]; // sibling nodes in receiver balance tree proof
+    signal input toProof[numTxs][balDepth]; // sibling nodes in receiver balance tree proof
 
     // public inputs
     signal input txRoot; // Transaction tree root
@@ -60,8 +60,10 @@ template Main(balDepth, txDepth) {
 
     /// LOGIC ///
     signal intermediateRoots[numTxs + 1];
+    log(10000);
     intermediateRoots[0] <== prevRoot;
     for (var i = 0; i < numTxs; i++) {
+        log(i);
         // confirm tx existence in tx tree root
         txExistence[i] = TxExistence(txDepth);
         txExistence[i].from[0] <== from[i][0];
@@ -84,38 +86,39 @@ template Main(balDepth, txDepth) {
         txExistence[i].signature[2] <== signature[i][2];
 
         // confirm existence of sender in balance tree
-        senderExistence[i] = BalanceExistence();
-        senderExistence[i].from[0] <== from[i][0];
-        senderExistence[i].from[1] <== from[i][1];
-        senderExistence[i].balance <== balanceFrom[i];
-        senderExistence[i].nonce <== nonceFrom[i];
-        senderExistence[i].tokenType <== tokenTypeFrom[i];
-        senderExistence.balanceRoot <== intermediateRoots[i];
+        senderExistence[i] = BalanceExistence(balDepth);
+        senderExistence[i].pubkey[0] <== from[i][0];
+        senderExistence[i].pubkey[1] <== from[i][1];
+        senderExistence[i].balance <== fromBalance[i];
+        senderExistence[i].nonce <== fromNonce[i];
+        senderExistence[i].tokenType <== fromTokenType[i];
+        senderExistence[i].balanceRoot <== intermediateRoots[i];
         for (var j = 0; j < balDepth; j++){
             senderExistence[i].positions[j] <== fromPositions[i][j];
             senderExistence[i].proof[j] <== fromProof[i][j];
         }
 
         // confirm sender has adaquate balance
-        isLessEqThan[i] = LessEqThan(256);
-        isLessEqThan[i].in[0] = balanceFrom[i];
-        isLessEqThan[i].in[1] = amount[i];
+    
+        isLessEqThan[i] = LessEqThan(252);
+        isLessEqThan[i].in[0] <== fromBalance[i];
+        isLessEqThan[i].in[1] <== amount[i];
         isLessEqThan[i].out === 1;
 
         // force non-withdrawal tx's to have consistent token types between sender and receiver
         ifBothHighForceEqual[i] = IfBothHighForceEqual();
         ifBothHighForceEqual[i].check1 <== to[i][0];
         ifBothHighForceEqual[i].check2 <== to[i][1];
-        ifBothHighForceEqual[i].a <== tokenTypeTo[i];
-        ifBothHighForceEqual[i].b <== tokenTypeFrom[i];
+        ifBothHighForceEqual[i].a <== toTokenType[i];
+        ifBothHighForceEqual[i].b <== fromTokenType[i];
 
         // compute sender leaf post transaction
         newSender[i] = BalanceLeaf();
         newSender[i].pubkey[0] <== from[i][0];
         newSender[i].pubkey[1] <== from[i][1];
-        newSender[i].balance <== balanceFrom[i] - amount[i];
-        newSender[i].nonce <== nonceFrom[i] + 1;
-        newSender[i].tokenType <== tokenTypeFrom[i];
+        newSender[i].balance <== fromBalance[i] - amount[i];
+        newSender[i].nonce <== fromNonce[i] + 1;
+        newSender[i].tokenType <== fromTokenType[i];
 
         // get intra-tx intermediate root from new sender leaf
         computedRootFromNewSender[i] = GetMerkleRoot(balDepth);
@@ -129,9 +132,9 @@ template Main(balDepth, txDepth) {
         receiverExistence[i] = BalanceExistence(balDepth);
         receiverExistence[i].pubkey[0] <== to[i][0];
         receiverExistence[i].pubkey[1] <== to[i][1];
-        receiverExistence[i].balance <== balanceTo[i];
-        receiverExistence[i].nonce <== nonceTo[i];
-        receiverExistence[i].tokenType <== tokenTypeTo[i];
+        receiverExistence[i].balance <== toBalance[i];
+        receiverExistence[i].nonce <== toNonce[i];
+        receiverExistence[i].tokenType <== toTokenType[i];
         receiverExistence[i].balanceRoot <==  computedRootFromNewSender[i].out;
         for (var j = 0; j < balDepth; j++){
             receiverExistence[i].positions[j] <== toPositions[i][j] ;
@@ -143,8 +146,8 @@ template Main(balDepth, txDepth) {
         allLow[i].in[0] <== to[i][0];
         allLow[i].in[1] <== to[i][1];
         burnMux[i] = Mux1();
-        burnMux[i].c[0] <== balanceTo[i];
-        burnMux[i].c[1] <== balanceTo[i] + amount[i];
+        burnMux[i].c[0] <== toBalance[i];
+        burnMux[i].c[1] <== toBalance[i] + amount[i];
         burnMux[i].s <== allLow[i].out;
 
         // compute receiver leaf post transaction
@@ -152,14 +155,14 @@ template Main(balDepth, txDepth) {
         newReceiver[i].pubkey[0] <== to[i][0];
         newReceiver[i].pubkey[1] <== to[i][1];
         newReceiver[i].balance <== burnMux[i].out; 
-        newReceiver[i].nonce <== nonceTo[i];
-        newReceiver[i].tokenType <== tokenTypeTo[i];
+        newReceiver[i].nonce <== toNonce[i];
+        newReceiver[i].tokenType <== toTokenType[i];
 
         // get balance tree root after applying transaction to both accounts
         computedRootFromNewReceiver[i] = GetMerkleRoot(balDepth);
         computedRootFromNewReceiver[i].leaf <== newReceiver[i].out;
         for (var j = 0; j < balDepth; j++){
-            computedRootFromNewReceiver[i].proof[j] <== to[i][j];
+            computedRootFromNewReceiver[i].proof[j] <== toProof[i][j];
             computedRootFromNewReceiver[i].positions[j] <== toPositions[i][j];
         }
 
@@ -171,4 +174,4 @@ template Main(balDepth, txDepth) {
     intermediateRoots[txDepth + 1] === nextRoot;
 }
 
-component main { public [root] } = Main(4, 2);
+component main { public [txRoot, prevRoot, nextRoot] } = Main(4, 2);

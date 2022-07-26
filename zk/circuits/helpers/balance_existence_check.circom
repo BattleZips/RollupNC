@@ -11,7 +11,7 @@ template BalanceExistence(k){
     signal input tokenType; // Token registry index for token type
 
     signal input balanceRoot; // root of balance tree
-    signal input position[k]; // balance tree traversal path to leaf checked for inclusion
+    signal input positions[k]; // balance tree traversal path to leaf checked for inclusion
     signal input proof[k]; // siblings proving leaf inclusion
 
     component balanceLeaf = BalanceLeaf();
@@ -26,7 +26,7 @@ template BalanceExistence(k){
     balanceExistence.root <== balanceRoot;
 
     for (var s = 0; s < k; s++){
-        balanceExistence.position[s] <== position[s];
+        balanceExistence.positions[s] <== positions[s];
         balanceExistence.proof[s] <== proof[s];
     }
 

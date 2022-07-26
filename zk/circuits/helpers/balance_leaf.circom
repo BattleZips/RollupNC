@@ -12,11 +12,11 @@ template BalanceLeaf() {
     signal output out;
 
     component balanceLeaf = Poseidon(5);
-    balanceLeaf.in[0] <== pubkey[0];
-    balanceLeaf.in[1] <== pubkey[1];
-    balanceLeaf.in[2] <== balance;
-    balanceLeaf.in[3] <== nonce; 
-    balanceLeaf.in[4] <== tokenType;
+    balanceLeaf.inputs[0] <== pubkey[0];
+    balanceLeaf.inputs[1] <== pubkey[1];
+    balanceLeaf.inputs[2] <== balance;
+    balanceLeaf.inputs[3] <== nonce; 
+    balanceLeaf.inputs[4] <== tokenType;
 
     out <== balanceLeaf.out;
 }
