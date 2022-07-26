@@ -91,7 +91,7 @@ module.exports = class L2Account {
      */
     debit(_amount) {
         this.balance -= _amount;
-        this.nonce += 1;
+        this.nonce += BigInt(1);
         this.root = this.hash();
     }
 
@@ -110,7 +110,8 @@ module.exports = class L2Account {
      * @return {bigint} - a signature on the data by this account
      */
     sign(data) {
-        return this.eddsa.signPoseidon(this.prvkey, data);
+        const signature = this.eddsa.signPoseidon(this.prvkey, data);
+        return [...signature.R8.map(point => this.F.toObject(point)), signature.S];
     }
 
     /**

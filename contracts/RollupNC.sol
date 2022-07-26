@@ -170,7 +170,7 @@ contract RollupNC {
     }
 
     // function withdraw(
-    //     uint256[9] memory txInfo, //[pubkeyX, pubkeyY, index, toX ,toY, nonce, amount, token_type_from, txRoot]
+    //     uint256[9] memory txInfo, //[fromX, fromY, fromIndex, toX ,toY, nonce, amount, token_type_from, txRoot]
     //     uint256[] memory position,
     //     uint256[] memory proof,
     //     address payable recipient,

@@ -5,8 +5,8 @@ include "./helpers/if_gadgets.circom";
 include "./helpers/balance_leaf.circom";
 include "./helpers/balance_existence_check.circom";
 include "./helpers/get_merkle_root.circom";
-include "../../../node_modules/circomlib/circuits/mux1.circom";
-include "../../../node_modules/circomlib/circuits/comparators.circom";
+include "../../node_modules/circomlib/circuits/mux1.circom";
+include "../../node_modules/circomlib/circuits/comparators.circom";
 
 
 
