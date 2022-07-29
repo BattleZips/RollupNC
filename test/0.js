@@ -31,6 +31,7 @@ describe("Test rollup deposits", async () => {
         F = poseidon.F;
         _poseidon = (data) => F.toObject(poseidon(data));
         stateCircuit = await wasm_tester(path.resolve('zk/circuits/update_state_verifier.circom'));
+        withdrawCircuit = await wasm_tester(path.resolve('zk/circuits/withdraw_signature_verifier.circom'));
 
         // generate zero cache
         const depths = [4, 2];
@@ -198,29 +199,6 @@ describe("Test rollup deposits", async () => {
                 prevRoot: tree.root,
                 nextRoot: undefined
             }
-            
-            // // bob -> david
-            // txs.push([
-            //     ...accounts.bob.L2.getPubkey(),
-            //     3, // fromIndex
-            //     ...accounts.david.L2.getPubkey(),
-            //     0, // nonce
-            //     33, // ammount
-            //     1 // tokenType
-            // ]);
-            // accounts.bob.L2.debit(33);
-            // accounts.david.L2.credit(33);
-
-            // // bob -> 0 address (withdraw)
-            // txs.push([
-            //     ...accounts.bob.L2.getPubkey(),
-            //     2, // fromIndex
-            //     ...[BigInt(0), BigInt(0)],
-            //     1, // nonce
-            //     402, // ammount
-            //     1 // tokenType
-            // ]);
-            // accounts.bob.L2.debit(402);
 
         });
 
@@ -439,9 +417,8 @@ describe("Test rollup deposits", async () => {
                     input.txProof.push(txProof);
                 }
             })
-        })
+        });
         describe('Rollup layer 2 state to layer 1', async () => {
-            let proofArgs;
             it('Simulate constraints with circom_tester', async () => {
                 const w = await stateCircuit.calculateWitness(input);
                 await stateCircuit.assertOut(w, {});
@@ -452,7 +429,7 @@ describe("Test rollup deposits", async () => {
                     'zk/update_state_verifier_js/update_state_verifier.wasm',
                     'zk/zkey/update_state_verifier_final.zkey'
                 )
-                proofArgs = buildProofArgs(proof);
+                const proofArgs = buildProofArgs(proof);
                 const tx = rollup.updateState(proofArgs, txTree.root, tree.root);
                 await expect(tx).to.emit(rollup, 'UpdatedState').withArgs(
                     tree.root,
@@ -460,6 +437,27 @@ describe("Test rollup deposits", async () => {
                     txTree.root
                 );
             })
+        });
+    });
+    describe('Withdraw from L2 to L1', async () => {
+        it('Simulate withdraw with circom_tester', async () => {
+            // sign pubkey
+            const recipient = BigInt(accounts.bob.L1.address);
+            const data = poseidon(BigInt(1), recipient); // L2 withdraw tx nonce, recipient
+            const signature = accounts.bob.L2.sign(data);
+            input = { pubkey: accounts.bob.L2.getPubkey(), signature };
+            const w = await withdrawCircuit.calculateWitness(input);
+            await withdrawCircuit.assertOut(w, {});
+        })
+        xit('Withdraw on-chain', async () => {
+            let { proof } = await snarkjs.groth16.fullProve(
+                input,
+                'zk/withdraw_signature_verifier_js/withdraw_signature_verifier.wasm',
+                'zk/zkey/withdraw_signature_verifier_final.zkey'
+            )
+            console.log('x', proof);
+            const proofArgs = buildProofArgs(proof);
+
         })
     })
 })

@@ -12,8 +12,8 @@ import "hardhat/console.sol";
 /// @title implementation of Non-custodial rollup
 contract RollupNC {
 
-    IVerifier public usv; // update state verifier
-    IVerifier public wsv; // withdraw signature verifier
+    IUSV public usv; // update state verifier
+    IWSV public wsv; // withdraw signature verifier
     mapping(uint256 => uint256) public pendingDeposits;
     ITokenRegistry public registry;
 
@@ -33,23 +33,24 @@ contract RollupNC {
     // (queueNumber => [pubkey_x, pubkey_y, balance, nonce, token_type])
     mapping(uint256 => uint256) public deposits; //leaf idx => leafHash
     mapping(uint256 => uint256) public updates; //txRoot => update idx
+    mapping(uint256 => bool) public withdraws; // txLeaf => true if withdrawn
 
     event RegisteredToken(uint256 tokenType, address tokenContract);
     event RequestDeposit(uint256[2] pubkey, uint256 amount, uint256 tokenType);
     event ConfirmDeposit(uint256 oldRoot, uint256 newRoot, uint8 numAdded);
     event UpdatedState(uint256 currentRoot, uint256 oldRoot, uint256 txRoot);
-    event Withdraw(uint256[9] accountInfo, address recipient);
+    event Withdrawn(uint256[8] accountInfo, address recipient);
 
     modifier onlyCoordinator() {
-        assert(msg.sender == coordinator);
+        require(msg.sender == coordinator);
         _;
     }
 
-    // modifier txTreeExists(uint256 _root) {
-    //     assert(updates[txInfo[8]] > 0 "Could not find root to prove inclusion");
-    //     _;
-    // }
-
+    modifier txTreeExists(uint256 _root) {
+        require(updates[_root] > 0, "Tx root does not exist");
+        _;
+    }
+    
     /// @dev construct a new non-custodial on-chain rollup
     /// @param _addresses: array of addresses used in the rollup contract
     ///   [0]: Update State Verifier contract
@@ -68,8 +69,8 @@ contract RollupNC {
     ) {
         require(_depth[0] + 1 == _zeroCache.length, "Param size mismatch");
         // assign contract references
-        usv = IVerifier(_addresses[0]);
-        wsv = IVerifier(_addresses[1]);
+        usv = IUSV(_addresses[0]);
+        wsv = IWSV(_addresses[1]);
         registry = ITokenRegistry(_addresses[2]);
 
         // assign primative variables
@@ -180,60 +181,49 @@ contract RollupNC {
         return currentRoot;
     }
 
-    // function withdraw(
-    //     uint256[9] memory txInfo, //[fromX, fromY, fromIndex, toX ,toY, nonce, amount, token_type_from, txRoot]
-    //     uint256[] memory position,
-    //     uint256[] memory proof,
-    //     address payable recipient,
-    //     uint256[2] memory a,
-    //     uint256[2][2] memory b,
-    //     uint256[2] memory c
-    // ) public txTreeExists(txInfo[8]) {
-    //     require(txInfo[7] > 0, "invalid tokenType");
-    //     require(updates[txInfo[8]] > 0, "txRoot does not exist");
-    //     uint256[] memory txArray = new uint256[](8);
-    //     for (uint256 i = 0; i < 8; i++) {
-    //         txArray[i] = txInfo[i];
-    //     }
-    //     uint256 txLeaf = mimcMerkle.hashMiMC(txArray);
-    //     require(
-    //         txInfo[8] == mimcMerkle.getRootFromProof(txLeaf, position, proof),
-    //         "transaction does not exist in specified transactions root"
-    //     );
+    /**
+     * Withdraw a 
+     */
+    function withdraw(
+        uint256[8] memory _tx, //[fromX, fromY, fromIndex, toX ,toY, nonce, amount, token_type_from, txRoot]
+        uint256 _txRoot,
+        uint256[] memory _txPosition,
+        uint256[] memory _txProof,
+        address payable _recipient,
+        uint256[8] memory _proof
+    ) public txTreeExists(_txRoot) {
+        require(_tx[7] > 0, "invalid tokenType");
+        uint256 leaf = PoseidonT9.poseidon(_tx);
+        require(!withdraws[leaf], "Tx already withdrawn");
+        require(
+            _txRoot == getRootFromProof(leaf, _txPosition, _txProof),
+            "tx does not exist in given transaction tree"
+        );
+        // validate state change via zk proof
+        uint256[2] memory a = [_proof[0], _proof[1]];
+        uint256[2] memory b_0 = [_proof[2], _proof[3]];
+        uint256[2] memory b_1 = [_proof[4], _proof[5]];
+        uint256[2] memory c = [_proof[6], _proof[7]];
+        uint256[4] memory input = [_tx[0], _tx[1], _tx[5], uint256(uint160(address(_recipient)))];
+        require(
+            wsv.verifyProof(a, [b_0, b_1], c, input),
+            "eddsa signature is not valid"
+        );
 
-    //     // message is hash of nonce and recipient address
-    //     uint256[] memory msgArray = new uint256[](2);
-    //     msgArray[0] = txInfo[5];
-    //     msgArray[1] = uint256(recipient);
-
-    //     require(
-    //         withdraw_verifyProof(
-    //             a,
-    //             b,
-    //             c,
-    //             [txInfo[0], txInfo[1], mimcMerkle.hashMiMC(msgArray)]
-    //         ),
-    //         "eddsa signature is not valid"
-    //     );
-
-    //     // transfer token on tokenContract
-    //     if (txInfo[7] == 1) {
-    //         // ETH
-    //         recipient.transfer(txInfo[6]);
-    //     } else {
-    //         // ERC20
-    //         address tokenContractAddress = tokenRegistry.registeredTokens(
-    //             txInfo[7]
-    //         );
-    //         tokenContract = IERC20(tokenContractAddress);
-    //         require(
-    //             tokenContract.transfer(recipient, txInfo[6]),
-    //             "transfer failed"
-    //         );
-    //     }
-
-    //     emit Withdraw(txInfo, recipient);
-    // }
+        // transfer token on tokenContract
+        if (_tx[7] == 1) {
+            // ETH
+            _recipient.transfer(_tx[6]);
+        } else {
+            // // ERC20
+            // address erc20 = registry.registry(_tx[7]);
+            // require(
+            //     IERC20(erc20).transfer(_recipient, _tx[6]),
+            //     "transfer failed"
+            // );
+        }
+        emit Withdrawn(_tx, _recipient);
+    }
 
     //call methods on TokenRegistry contract
 

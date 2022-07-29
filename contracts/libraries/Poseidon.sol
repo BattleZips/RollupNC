@@ -10,3 +10,8 @@ library PoseidonT3 {
 library PoseidonT6 {
     function poseidon(uint256[5] memory) public pure returns (uint256) {}
 }
+
+/* Reference Poseidon hasher library contract using 8 inputs (account hash) */
+library PoseidonT9 {
+    function poseidon(uint256[8] memory) public pure returns (uint256) {}
+}
