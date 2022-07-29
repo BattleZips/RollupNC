@@ -60,10 +60,9 @@ template Main(balDepth, txDepth) {
 
     /// LOGIC ///
     signal intermediateRoots[numTxs + 1];
-    log(10000);
+    
     intermediateRoots[0] <== prevRoot;
     for (var i = 0; i < numTxs; i++) {
-        log(i);
         // confirm tx existence in tx tree root
         txExistence[i] = TxExistence(txDepth);
         txExistence[i].from[0] <== from[i][0];
@@ -75,11 +74,12 @@ template Main(balDepth, txDepth) {
         txExistence[i].amount <== amount[i];
         txExistence[i].tokenType <== fromTokenType[i];
         txExistence[i].root <== txRoot;
+
         for (var j = 0; j < txDepth; j++) {
             txExistence[i].positions[j] <== txPositions[i][j];
             txExistence[i].proof[j] <== txProof[i][j];
         }
-
+        
         // confirm transaction leaf is signed by sender
         txExistence[i].signature[0] <== signature[i][0];
         txExistence[i].signature[1] <== signature[i][1];
@@ -92,17 +92,16 @@ template Main(balDepth, txDepth) {
         senderExistence[i].balance <== fromBalance[i];
         senderExistence[i].nonce <== fromNonce[i];
         senderExistence[i].tokenType <== fromTokenType[i];
-        senderExistence[i].balanceRoot <== intermediateRoots[i];
-        for (var j = 0; j < balDepth; j++){
+        senderExistence[i].root <== intermediateRoots[i];
+        for (var j = 0; j < balDepth; j++) {
             senderExistence[i].positions[j] <== fromPositions[i][j];
             senderExistence[i].proof[j] <== fromProof[i][j];
         }
 
         // confirm sender has adaquate balance
-    
         isLessEqThan[i] = LessEqThan(252);
-        isLessEqThan[i].in[0] <== fromBalance[i];
-        isLessEqThan[i].in[1] <== amount[i];
+        isLessEqThan[i].in[0] <== amount[i];
+        isLessEqThan[i].in[1] <== fromBalance[i];
         isLessEqThan[i].out === 1;
 
         // force non-withdrawal tx's to have consistent token types between sender and receiver
@@ -135,7 +134,7 @@ template Main(balDepth, txDepth) {
         receiverExistence[i].balance <== toBalance[i];
         receiverExistence[i].nonce <== toNonce[i];
         receiverExistence[i].tokenType <== toTokenType[i];
-        receiverExistence[i].balanceRoot <==  computedRootFromNewSender[i].out;
+        receiverExistence[i].root <==  computedRootFromNewSender[i].out;
         for (var j = 0; j < balDepth; j++){
             receiverExistence[i].positions[j] <== toPositions[i][j] ;
             receiverExistence[i].proof[j] <== toProof[i][j];
@@ -146,8 +145,8 @@ template Main(balDepth, txDepth) {
         allLow[i].in[0] <== to[i][0];
         allLow[i].in[1] <== to[i][1];
         burnMux[i] = Mux1();
-        burnMux[i].c[0] <== toBalance[i];
-        burnMux[i].c[1] <== toBalance[i] + amount[i];
+        burnMux[i].c[0] <== toBalance[i] + amount[i];
+        burnMux[i].c[1] <== toBalance[i];
         burnMux[i].s <== allLow[i].out;
 
         // compute receiver leaf post transaction
@@ -167,11 +166,12 @@ template Main(balDepth, txDepth) {
         }
 
         // assign inter-tx intermediate root variable
+        
         intermediateRoots[i + 1] <== computedRootFromNewReceiver[i].out;
     }
 
     // confirm publicly reported next root is the same as computed root after applying all txs
-    intermediateRoots[txDepth + 1] === nextRoot;
+    intermediateRoots[numTxs] === nextRoot;
 }
 
 component main { public [txRoot, prevRoot, nextRoot] } = Main(4, 2);

@@ -6,6 +6,7 @@ const { expect } = require("chai").use(solidity)
 const { initializeContracts, generateAccounts, L2Account } = require('./utils')
 const { IncrementalMerkleTree } = require('@zk-kit/incremental-merkle-tree');
 const path = require('path');
+const { emptyRoot } = require('./utils/accounts');
 
 
 describe("Test rollup deposits", async () => {
@@ -254,8 +255,6 @@ describe("Test rollup deposits", async () => {
                 const leaf = poseidon(txData);
                 const signature = accounts.alice.L2.sign(leaf);
                 txTree.insert(F.toObject(leaf));
-                let { siblings: txProof, pathIndices: txPositions } = txTree.createProof(0);
-                txProof = txProof.map(node => node[0]);
                 
     
                 // add data to input array
@@ -270,8 +269,6 @@ describe("Test rollup deposits", async () => {
                 input.toNonce.push(accounts.bob.L2.nonce);
                 input.toBalance.push(toBalance);
                 input.toTokenType.push(tokenType);
-                input.txPositions.push(txPositions);
-                input.txProof.push(txProof);
                 input.fromPositions.push(fromPositions);
                 input.fromProof.push(fromProof);
                 input.toPositions.push(toPositions);
@@ -309,10 +306,7 @@ describe("Test rollup deposits", async () => {
                 // compute tx in tx tree inclusion proof
                 const leaf = poseidon(txData);
                 const signature = accounts.charlie.L2.sign(leaf);
-                txTree.insert(F.toObject(leaf));
-                let { siblings: txProof, pathIndices: txPositions } = txTree.createProof(1);
-                txProof = txProof.map(node => node[0]);
-                
+                txTree.insert(F.toObject(leaf));      
     
                 // add data to input array
                 input.from.push(accounts.charlie.L2.getPubkey());
@@ -326,8 +320,6 @@ describe("Test rollup deposits", async () => {
                 input.toNonce.push(accounts.bob.L2.nonce);
                 input.toBalance.push(toBalance);
                 input.toTokenType.push(tokenType);
-                input.txPositions.push(txPositions);
-                input.txProof.push(txProof);
                 input.fromPositions.push(fromPositions);
                 input.fromProof.push(fromProof);
                 input.toPositions.push(toPositions);
@@ -365,10 +357,7 @@ describe("Test rollup deposits", async () => {
                 // compute tx in tx tree inclusion proof
                 const leaf = poseidon(txData);
                 const signature = accounts.bob.L2.sign(leaf);
-                txTree.insert(F.toObject(leaf));
-                let { siblings: txProof, pathIndices: txPositions } = txTree.createProof(2);
-                txProof = txProof.map(node => node[0]);
-                
+                txTree.insert(F.toObject(leaf));              
     
                 // add data to input array
                 input.from.push(accounts.bob.L2.getPubkey());
@@ -382,8 +371,6 @@ describe("Test rollup deposits", async () => {
                 input.toNonce.push(accounts.david.L2.nonce);
                 input.toBalance.push(toBalance);
                 input.toTokenType.push(tokenType);
-                input.txPositions.push(txPositions);
-                input.txProof.push(txProof);
                 input.fromPositions.push(fromPositions);
                 input.fromProof.push(fromProof);
                 input.toPositions.push(toPositions);
@@ -407,9 +394,9 @@ describe("Test rollup deposits", async () => {
                 
                 // compute tx leaf
                 const txData = [
-                    ...accounts.charlie.L2.getPubkey(),
-                    fromIndex, // fromIndex
                     ...accounts.bob.L2.getPubkey(),
+                    fromIndex, // fromIndex
+                    ...[BigInt(0), BigInt(0)],
                     fromNonce, // nonce
                     value, // amount
                     tokenType // tokenType
@@ -418,10 +405,7 @@ describe("Test rollup deposits", async () => {
                 // compute tx in tx tree inclusion proof
                 const leaf = poseidon(txData);
                 const signature = accounts.bob.L2.sign(leaf);
-                txTree.insert(F.toObject(leaf));
-                let { siblings: txProof, pathIndices: txPositions } = txTree.createProof(3);
-                txProof = txProof.map(node => node[0]);
-                
+                txTree.insert(F.toObject(leaf));     
     
                 // add data to input array
                 input.from.push(accounts.bob.L2.getPubkey());
@@ -435,8 +419,6 @@ describe("Test rollup deposits", async () => {
                 input.toNonce.push(BigInt(0));
                 input.toBalance.push(BigInt(0));
                 input.toTokenType.push(BigInt(0)); // withdraw has toTokenType of 0
-                input.txPositions.push(txPositions);
-                input.txProof.push(txProof);
                 input.fromPositions.push(fromPositions);
                 input.fromProof.push(fromProof);
                 input.toPositions.push(toPositions);
@@ -445,12 +427,20 @@ describe("Test rollup deposits", async () => {
                 // assign txRoot and nextRoot since final tx
                 input.txRoot = txTree.root;
                 input.nextRoot = tree.root;
+
+                // assign all tx proofs
+                for (let i = 0; i < 4; i++) {
+                    let { siblings: txProof, pathIndices: txPositions } = txTree.createProof(i);
+                    txProof = txProof.map(node => node[0]);
+                    input.txPositions.push(txPositions);
+                    input.txProof.push(txProof);
+                }
             })
         })
         describe('Prove Rollup', async () => {
-            it('ttt', async () => {
+            it('Simulate constraints with circom_tester', async () => {
                 const w = await stateCircuit.calculateWitness(input);
-                console.log('w', w);
+                await stateCircuit.assertOut(w, {});
             })
         })
     })

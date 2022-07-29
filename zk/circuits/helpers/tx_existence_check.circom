@@ -50,7 +50,6 @@ template TxExistence(depth){
         leafExistence.positions[i] <== positions[i];
         leafExistence.proof[i] <== proof[i];
     }
-
     // Verify authenticity of transaction
     eddsa.enabled <== 1;
     eddsa.Ax <== from[0];
