@@ -15,4 +15,4 @@ template Main(){
     verifier.S <== signature[2];
 }
 
-component main { public [Ax, Ay, M] } = Main();
+component main { public [pubkey] } = Main();

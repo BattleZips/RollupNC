@@ -1,13 +1,17 @@
-const { deployments, ethers } = require('hardhat')
+const { ethers } = require('hardhat')
+const snarkjs = require('snarkjs')
 const { wasm: wasm_tester } = require('circom_tester');
 const { solidity } = require("ethereum-waffle");
 const { buildEddsa, buildPoseidon } = require('circomlibjs')
 const { expect } = require("chai").use(solidity)
-const { initializeContracts, generateAccounts, L2Account } = require('./utils')
+const { 
+    initializeContracts,
+    generateAccounts,
+    L2Account,
+    buildProofArgs
+} = require('./utils')
 const { IncrementalMerkleTree } = require('@zk-kit/incremental-merkle-tree');
 const path = require('path');
-const { emptyRoot } = require('./utils/accounts');
-
 
 describe("Test rollup deposits", async () => {
     let eddsa, poseidon, F, _poseidon; // circomlibjs objects
@@ -26,8 +30,7 @@ describe("Test rollup deposits", async () => {
         eddsa = await buildEddsa();
         F = poseidon.F;
         _poseidon = (data) => F.toObject(poseidon(data));
-        stateCircuit = await wasm_tester(path.resolve('zk/circuits/update_state.circom'));
-
+        stateCircuit = await wasm_tester(path.resolve('zk/circuits/update_state_verifier.circom'));
 
         // generate zero cache
         const depths = [4, 2];
@@ -166,13 +169,13 @@ describe("Test rollup deposits", async () => {
         })
     })
     describe('Transfers', async () => {
-        let txs, txTree, input;
+        let oldRoot, txTree, input;
 
         before(async () => {
 
             txs = [];
             txTree = new IncrementalMerkleTree(_poseidon, 2, BigInt(0));
-
+            oldRoot = tree.root;
             input = {
                 from: [], // array of sender eddsa keys
                 to: [], // array of receiver eddsa keys
@@ -437,10 +440,25 @@ describe("Test rollup deposits", async () => {
                 }
             })
         })
-        describe('Prove Rollup', async () => {
+        describe('Rollup layer 2 state to layer 1', async () => {
+            let proofArgs;
             it('Simulate constraints with circom_tester', async () => {
                 const w = await stateCircuit.calculateWitness(input);
                 await stateCircuit.assertOut(w, {});
+            })
+            it('Generate proof usable on-chain', async () => {
+                let { proof } = await snarkjs.groth16.fullProve(
+                    input,
+                    'zk/update_state_verifier_js/update_state_verifier.wasm',
+                    'zk/zkey/update_state_verifier_final.zkey'
+                )
+                proofArgs = buildProofArgs(proof);
+                const tx = rollup.updateState(proofArgs, txTree.root, tree.root);
+                await expect(tx).to.emit(rollup, 'UpdatedState').withArgs(
+                    tree.root,
+                    oldRoot,
+                    txTree.root
+                );
             })
         })
     })

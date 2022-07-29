@@ -5,15 +5,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import './interfaces/IRollup.sol';
 import "./interfaces/ITokenRegistry.sol";
 import "./interfaces/IVerifier.sol";
-// import "./libraries/PackedPairings.sol";
+// import { UnpackedProof, PackedProofs } from "./libraries/PackedProofs.sol";
 import "./libraries/Poseidon.sol";
 import "hardhat/console.sol";
 
 /// @title implementation of Non-custodial rollup
 contract RollupNC {
+
     IVerifier public usv; // update state verifier
     IVerifier public wsv; // withdraw signature verifier
-    // IncrementalBinaryTree public state; // incremental binary tree of account balances
     mapping(uint256 => uint256) public pendingDeposits;
     ITokenRegistry public registry;
 
@@ -81,21 +81,32 @@ contract RollupNC {
         coordinator = msg.sender;
     }
 
-    // function updateState(
-    //     uint256[2] memory a,
-    //     uint256[2][2] memory b,
-    //     uint256[2] memory c,
-    //     uint256[3] memory input
-    // ) public onlyCoordinator {
-    //     require(currentRoot == input[2], "input does not match current root");
-    //     //validate proof
-    //     require(update_verifyProof(a, b, c, input), "SNARK proof is invalid");
-    //     // update merkle root
-    //     currentRoot = input[0];
-    //     updateNumber++;
-    //     updates[input[1]] = updateNumber;
-    //     emit UpdatedState(input[0], input[1], input[2]); //newRoot, txRoot, oldRoot
-    // }
+    /**
+     * Commit a batch of L2 transactions to L1 state by proving correctness
+     *
+     * @param _proof - packed representation of zero knowledge proof of valid state change
+     * @param _txRoot - merkle root storing the transactions mutating currentRoot to _nextRoot
+     * @param _nextRoot - the balance tree root after applying _txRoot
+     */
+    function updateState(
+        uint256[8] memory _proof,
+        uint256 _txRoot,
+        uint256 _nextRoot
+    ) public onlyCoordinator {
+        // validate state change via zk proof
+        uint256[2] memory a = [_proof[0], _proof[1]];
+        uint256[2] memory b_0 = [_proof[2], _proof[3]];
+        uint256[2] memory b_1 = [_proof[4], _proof[5]];
+        uint256[2] memory c = [_proof[6], _proof[7]];
+        uint256[3] memory input = [_txRoot, currentRoot, _nextRoot];
+        require(usv.verifyProof(a, [b_0, b_1], c, input), "SNARK proof is invalid");
+        // update merkle root
+        uint256 prev = currentRoot;
+        currentRoot = _nextRoot;
+        updateNumber++;
+        updates[_txRoot] = updateNumber;
+        emit UpdatedState(currentRoot, prev, _txRoot); //newRoot, txRoot, oldRoot
+    }
 
     // user tries to deposit ERC20 tokens
     function deposit(
