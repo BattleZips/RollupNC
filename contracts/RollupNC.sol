@@ -39,7 +39,7 @@ contract RollupNC {
     event RequestDeposit(uint256[2] pubkey, uint256 amount, uint256 tokenType);
     event ConfirmDeposit(uint256 oldRoot, uint256 newRoot, uint8 numAdded);
     event UpdatedState(uint256 currentRoot, uint256 oldRoot, uint256 txRoot);
-    event Withdrawn(uint256[8] accountInfo, address recipient);
+    event Withdrawn(uint256 leaf, address recipient);
 
     modifier onlyCoordinator() {
         require(msg.sender == coordinator);
@@ -193,20 +193,24 @@ contract RollupNC {
         uint256[8] memory _proof
     ) public txTreeExists(_txRoot) {
         require(_tx[7] > 0, "invalid tokenType");
-        uint256 leaf = PoseidonT9.poseidon(_tx);
+        uint256 leaf = PoseidonT3.poseidon([
+            PoseidonT5.poseidon([_tx[0], _tx[1], _tx[2], _tx[3]]), 
+            PoseidonT5.poseidon([_tx[4], _tx[5], _tx[6], _tx[7]])
+        ]);
         require(!withdraws[leaf], "Tx already withdrawn");
         require(
             _txRoot == getRootFromProof(leaf, _txPosition, _txProof),
             "tx does not exist in given transaction tree"
         );
         // validate state change via zk proof
-        uint256[2] memory a = [_proof[0], _proof[1]];
-        uint256[2] memory b_0 = [_proof[2], _proof[3]];
-        uint256[2] memory b_1 = [_proof[4], _proof[5]];
-        uint256[2] memory c = [_proof[6], _proof[7]];
-        uint256[4] memory input = [_tx[0], _tx[1], _tx[5], uint256(uint160(address(_recipient)))];
+        uint256[4] memory input = [_tx[0], _tx[1], uint256(uint160(address(_recipient))), _tx[5]];
         require(
-            wsv.verifyProof(a, [b_0, b_1], c, input),
+            wsv.verifyProof(
+                [_proof[0], _proof[1]], 
+                [[_proof[2], _proof[3]], [_proof[4], _proof[5]]],
+                [_proof[6], _proof[7]],
+                input
+            ),
             "eddsa signature is not valid"
         );
 
@@ -215,14 +219,14 @@ contract RollupNC {
             // ETH
             _recipient.transfer(_tx[6]);
         } else {
-            // // ERC20
-            // address erc20 = registry.registry(_tx[7]);
-            // require(
-            //     IERC20(erc20).transfer(_recipient, _tx[6]),
-            //     "transfer failed"
-            // );
+            // ERC20
+            address erc20 = registry.registry(_tx[7]);
+            require(
+                IERC20(erc20).transfer(_recipient, _tx[6]),
+                "transfer failed"
+            );
         }
-        emit Withdrawn(_tx, _recipient);
+        emit Withdrawn(leaf, _recipient);
     }
 
     //call methods on TokenRegistry contract

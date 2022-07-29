@@ -10,7 +10,6 @@ const crypto = require('crypto')
  * @return the ethers contract object for the deployed rollup
  */
 async function initializeContracts(zeroCache) {
-    console.log('z', zeroCache)
     const signers = await ethers.getSigners()
     // deploy poseidon contracts
     const poseidonT3ABI = poseidonContract.generateABI(2);
@@ -18,26 +17,18 @@ async function initializeContracts(zeroCache) {
     const poseidonT3Factory = new ethers.ContractFactory(poseidonT3ABI, poseidonT3Bytecode, signers[0]);
     const poseidonT3 = await poseidonT3Factory.deploy();
     await poseidonT3.deployed();
+    const poseidonT5ABI = poseidonContract.generateABI(4);
+    const poseidonT5Bytecode = poseidonContract.createCode(4);
+    const poseidonT5Factory = new ethers.ContractFactory(poseidonT5ABI, poseidonT5Bytecode, signers[0]);
+    const poseidonT5 = await poseidonT5Factory.deploy();
+    await poseidonT5.deployed();
     const poseidonT6ABI = poseidonContract.generateABI(5);
     const poseidonT6Bytecode = poseidonContract.createCode(5);
     const poseidonT6Factory = new ethers.ContractFactory(poseidonT6ABI, poseidonT6Bytecode, signers[0]);
     const poseidonT6 = await poseidonT6Factory.deploy();
     await poseidonT6.deployed();
-    const poseidonT9ABI = poseidonContract.generateABI(7);
-    console.log('t')
-    let poseidonT9Bytecode
-    try {
-        poseidonT9Bytecode = poseidonContract.createCode(7);
-    } catch (e) {
-        console.log('error', e)
-    }
-    console.log('t')
-    const poseidonT9Factory = new ethers.ContractFactory(poseidonT9ABI, poseidonT9Bytecode, signers[0]);
-    console.log('t')
-    const poseidonT9 = await poseidonT9Factory.deploy();
-    console.log('t')
-    await poseidonT9.deployed();
-    console.log('r')
+
+    
     // deploy verifiers
     const usvFactory = await ethers.getContractFactory('UpdateStateVerifier')
     const usv = await usvFactory.deploy()
@@ -53,8 +44,8 @@ async function initializeContracts(zeroCache) {
     const rollupFactory = await ethers.getContractFactory('RollupNC', {
         libraries: {
             PoseidonT3: poseidonT3.address,
+            PoseidonT5: poseidonT5.address,
             PoseidonT6: poseidonT6.address,
-            PoseidonT9: poseidonT9.address
         }
     })
     const depths = [4, 2];

@@ -17,7 +17,7 @@ describe("Test rollup deposits", async () => {
     let eddsa, poseidon, F, _poseidon; // circomlibjs objects
     let signers, accounts; // ecdsa/ eddsa wallets
     let zeroCache; // cache balance tree zeros
-    let tree, subtree, root; // persist outside single unit test scope
+    let tree, subtree, txLeaf, oldRoot, txTree, input; // persist outside single unit test scope
     let rollup; // on-chain contract
     let stateCircuit, withdrawCircuit; // circom tester
 
@@ -170,8 +170,7 @@ describe("Test rollup deposits", async () => {
         })
     })
     describe('Transfers', async () => {
-        let oldRoot, txTree, input;
-
+        
         before(async () => {
 
             txs = [];
@@ -233,7 +232,8 @@ describe("Test rollup deposits", async () => {
                 ];
                 
                 // compute tx in tx tree inclusion proof
-                const leaf = poseidon(txData);
+                const half = txData.length / 2;
+                const leaf = poseidon([poseidon(txData.slice(0, half)), poseidon(txData.slice(half))]);
                 const signature = accounts.alice.L2.sign(leaf);
                 txTree.insert(F.toObject(leaf));
                 
@@ -283,9 +283,8 @@ describe("Test rollup deposits", async () => {
                     value, // amount
                     tokenType // tokenType
                 ];
-                
-                // compute tx in tx tree inclusion proof
-                const leaf = poseidon(txData);
+                const half = txData.length / 2;
+                const leaf = poseidon([poseidon(txData.slice(0, half)), poseidon(txData.slice(half))]);
                 const signature = accounts.charlie.L2.sign(leaf);
                 txTree.insert(F.toObject(leaf));      
     
@@ -334,9 +333,8 @@ describe("Test rollup deposits", async () => {
                     value, // amount
                     tokenType // tokenType
                 ];
-                
-                // compute tx in tx tree inclusion proof
-                const leaf = poseidon(txData);
+                const half = txData.length / 2;
+                const leaf = poseidon([poseidon(txData.slice(0, half)), poseidon(txData.slice(half))]);
                 const signature = accounts.bob.L2.sign(leaf);
                 txTree.insert(F.toObject(leaf));              
     
@@ -382,11 +380,12 @@ describe("Test rollup deposits", async () => {
                     value, // amount
                     tokenType // tokenType
                 ];
-                
-                // compute tx in tx tree inclusion proof
-                const leaf = poseidon(txData);
+                const half = txData.length / 2;
+                const leaf = poseidon([poseidon(txData.slice(0, half)), poseidon(txData.slice(half))]);
                 const signature = accounts.bob.L2.sign(leaf);
                 txTree.insert(F.toObject(leaf));     
+                txLeaf = F.toObject(leaf);
+
     
                 // add data to input array
                 input.from.push(accounts.bob.L2.getPubkey());
@@ -443,21 +442,45 @@ describe("Test rollup deposits", async () => {
         it('Simulate withdraw with circom_tester', async () => {
             // sign pubkey
             const recipient = BigInt(accounts.bob.L1.address);
-            const data = poseidon(BigInt(1), recipient); // L2 withdraw tx nonce, recipient
+            const nonce = BigInt(1);
+            const data = poseidon([nonce, recipient]); // L2 withdraw tx nonce, recipient
             const signature = accounts.bob.L2.sign(data);
-            input = { pubkey: accounts.bob.L2.getPubkey(), signature };
+            input = { 
+                pubkey: accounts.bob.L2.getPubkey(),
+                signature,
+                nonce,
+                recipient
+            };
             const w = await withdrawCircuit.calculateWitness(input);
             await withdrawCircuit.assertOut(w, {});
         })
-        xit('Withdraw on-chain', async () => {
+        it('Withdraw on-chain', async () => {
+            const amount = BigInt(402);
             let { proof } = await snarkjs.groth16.fullProve(
                 input,
                 'zk/withdraw_signature_verifier_js/withdraw_signature_verifier.wasm',
                 'zk/zkey/withdraw_signature_verifier_final.zkey'
             )
-            console.log('x', proof);
             const proofArgs = buildProofArgs(proof);
-
+            const txParams = [
+                ...accounts.bob.L2.getPubkey(),
+                BigInt(3), // fromIndex
+                ...[BigInt(0), BigInt(0)], // 0 address
+                BigInt(1), // nonce
+                amount, // amount
+                BigInt(1) // tokenType
+            ]
+            let { siblings: txProof, pathIndices: txPositions } = txTree.createProof(3);
+            txProof = txProof.map(node => node[0]);
+            const tx = rollup.connect(accounts.bob.L1).withdraw(
+                txParams,
+                txTree.root,
+                txPositions,
+                txProof,
+                accounts.bob.L1.address,
+                proofArgs
+            );
+            await expect(tx).to.emit(rollup, 'Withdrawn').withArgs(txLeaf, accounts.bob.L1.address);
         })
     })
 })

@@ -14,14 +14,20 @@ template TxLeaf() {
 
     signal output out; // Transaction root to be used as merkle leaf
 
-    component txLeaf = Poseidon(8);
-    txLeaf.inputs[0] <== from[0];
-    txLeaf.inputs[1] <== from[1];
-    txLeaf.inputs[2] <== fromIndex;
-    txLeaf.inputs[3] <== to[0];
-    txLeaf.inputs[4] <== to[1]; 
-    txLeaf.inputs[5] <== nonce;
-    txLeaf.inputs[6] <== amount;
-    txLeaf.inputs[7] <== tokenType;
+    component left = Poseidon(4);
+    left.inputs[0] <== from[0];
+    left.inputs[1] <== from[1];
+    left.inputs[2] <== fromIndex;
+    left.inputs[3] <== to[0];
+
+    component right = Poseidon(4);
+    right.inputs[0] <== to[1];
+    right.inputs[1] <== nonce;
+    right.inputs[2] <== amount;
+    right.inputs[3] <== tokenType;
+    
+    component txLeaf = Poseidon(2);
+    txLeaf.inputs[0] <== left.out;
+    txLeaf.inputs[1] <== right.out;
     out <== txLeaf.out;
 }
